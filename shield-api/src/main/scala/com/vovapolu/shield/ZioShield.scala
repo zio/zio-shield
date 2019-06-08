@@ -51,9 +51,7 @@ object ZioShield {
 
     def lintError(msg: RuleDiagnostic): String = {
       import scalafix.internal.util.PositionSyntax._
-      msg.position.formatMessage(msg.severity.toString,
-                                 s"[${msg.id.fullID}] ${msg.message}")
-
+      msg.position.formatMessage(msg.severity.toString, msg.message)
     }
 
     def patchError(oldDoc: String, newDoc: String, path: Path): Option[String] =

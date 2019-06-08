@@ -6,7 +6,6 @@ lazy val example = project
       "org.scalameta" % "semanticdb-scalac" % "4.1.0" cross CrossVersion.full),
     scalacOptions ++= List(
       "-Yrangepos",
-      "-Ywarn-unused-import"
     ),
     shieldFatalWarnings := true
   )
