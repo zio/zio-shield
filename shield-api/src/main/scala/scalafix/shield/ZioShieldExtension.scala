@@ -1,20 +1,11 @@
 package scalafix.shield
 
-import java.io.OutputStreamWriter
-import java.net.URLClassLoader
-import java.nio.file.Path
-import java.util.function
-
-import com.geirsson.coursiersmall
-import com.geirsson.coursiersmall.{CoursierSmall, Dependency, Repository}
-import sbt.{CrossVersion, Logger, ModuleID}
 import scalafix.internal.reflect.ClasspathOps
 import scalafix.v1.{SemanticDocument, SyntacticDocument}
 
-import scala.concurrent.duration.Duration
 import scala.meta.internal.io.PathIO
 import scala.meta.internal.symtab.SymbolTable
-import scala.meta.io.{AbsolutePath, Classpath, RelativePath}
+import scala.meta.io.{AbsolutePath, Classpath}
 import scala.util.{Failure, Success, Try}
 
 object ZioShieldExtension {

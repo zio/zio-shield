@@ -2,49 +2,96 @@ package com.vovapolu.shield
 
 import java.nio.file.Path
 
+import metaconfig.Conf
+import metaconfig.typesafeconfig.typesafeConfigMetaconfigParser
 import sbt.util.Logger
-import scalafix.internal.config.PrintStreamReporter
-import scalafix.internal.rule.NoValInForComprehension
+import scalafix.internal.rule.DisableSyntax
+import scalafix.internal.scaluzzi.DisableLegacy
 import scalafix.internal.v1.Rules
+import scalafix.lint.RuleDiagnostic
 import scalafix.shield.ZioShieldExtension
-import scalafix.v1.SyntacticDocument
+import scalafix.v1.{Configuration, SyntacticDocument}
+
+import scala.io.Source
 
 object ZioShield {
 
-  val synRules: Rules = {
-    println(
-      Rules
-        .all(this.getClass.getClassLoader)
-        .map(_.name))
+  private val shieldConf: Conf = Conf
+    .parseString(
+      Source
+        .fromInputStream(
+          getClass.getClassLoader.getResourceAsStream("shield.scalafix.conf"))
+        .mkString)
+    .get
 
-    val noValInFor = Rules
-      .all(this.getClass.getClassLoader)
-      .collect {
-        case r: NoValInForComprehension => r
-      }
-      .head
+  private val conf = Configuration().withConf(shieldConf)
 
-    Rules(List(noValInFor))
+  private val all = Rules.all(this.getClass.getClassLoader)
+
+  val syntaticRules: Rules = {
+    val selectedRules = all.collect {
+      case r: DisableSyntax => r
+    }
+
+    Rules(selectedRules.map(_.withConfiguration(conf).get))
+  }
+
+  val sematicRules: Rules = {
+    val selectedRules = all.collect {
+      case r: DisableLegacy => r
+    }
+
+    Rules(selectedRules.map(_.withConfiguration(conf).get))
   }
 
   def run(scalacOptions: List[String],
           files: List[Path],
+          fatalWarnings: Boolean,
           logger: Logger): Unit = {
-    val reporter = PrintStreamReporter(System.out)
 
-    files.foreach { f =>
-      val synDoc = SyntacticDocument.fromInput(meta.Input.File(f))
-      val sdoc = ZioShieldExtension.semanticDocumentFromPath(
+    def lintError(msg: RuleDiagnostic): String = {
+      import scalafix.internal.util.PositionSyntax._
+      msg.position.formatMessage(msg.severity.toString,
+                                 s"[${msg.id.fullID}] ${msg.message}")
+
+    }
+
+    def patchError(oldDoc: String, newDoc: String, path: Path): Option[String] =
+      if (oldDoc != newDoc) {
+        Some(s"Detected patch for ${path.toString}:\n$newDoc")
+      } else {
+        None
+      }
+
+    val errors = files.flatMap { f =>
+      val input = meta.Input.File(f)
+      val synDoc = SyntacticDocument.fromInput(input)
+      val (newDoc, msgs) =
+        syntaticRules.syntacticPatch(synDoc, suppress = false)
+      val synErrors =
+        patchError(input.text, newDoc, f).toList ++ msgs.map(lintError)
+
+      val semDoc = ZioShieldExtension.semanticDocumentFromPath(
         synDoc,
         f,
         scalacOptions
       )
+      val semErrors = semDoc match {
+        case Left(err) =>
+          List(
+            s"Unable to load SemanticDb information for ${f.toString}: $err. Semantic rules are disabled.")
+        case Right(doc) =>
+          val (newDoc, msgs) = sematicRules.semanticPatch(doc, suppress = false)
+          patchError(input.text, newDoc, f).toList ++ msgs.map(lintError)
+      }
 
-      val (newDoc, msgs) = synRules.syntacticPatch(synDoc, suppress = false)
-      logger.info(f.toAbsolutePath.toString)
-      logger.info(newDoc)
-      logger.info("---")
-      msgs.foreach(reporter.lint)
+      synErrors ++ semErrors
+    }
+
+    if (fatalWarnings) {
+      throw new ZioShieldFailed(errors)
+    } else {
+      errors.foreach(e => logger.warn(e))
     }
   }
 }

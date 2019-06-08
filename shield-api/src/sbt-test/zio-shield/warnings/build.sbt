@@ -8,8 +8,4 @@ lazy val example = project
       "-Yrangepos",
       "-Ywarn-unused-import"
     )
-//    libraryDependencies ++= Seq(
-//      "ch.epfl.scala" %% "scalafix-rules" % "0.9.5",
-//      "com.github.vovapolu" %% "scaluzzi" % "0.1.2"
-//    )
   )
