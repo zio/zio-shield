@@ -9,15 +9,11 @@ Add `zio-shield` sbt plugin to your `project/plugins.sbt`:
 addSbtPlugin("com.vovapolu" % "zio-shield" % "<version>")
 ```
 
-You will also need `semanticdb-scalac` compiler plugin and `-Yrangepos` scalac option in your `build.sbt`:
-```sbt
-addCompilerPlugin("org.scalameta" % "semanticdb-scalac" % "4.1.0" cross CrossVersion.full),
-scalacOptions += "-Yrangepos"
-```
+It will add `semanticdb-scalac` compiler plugin and `-Yrangepos` scalac option to your project settings. 
 
 ## Usage
 
-Just run `shield` command after initial compilation and it will statically analyze your code for potential errors and bugs. 
+Just run `shield` command and it will statically analyze your code for potential errors and bugs. 
 ```
 [warn] .../example/src/main/scala/example/Example.scala:6:13: error: asInstanceOf casts are disabled, use pattern matching instead
 [warn]   1.asInstanceOf[Long]

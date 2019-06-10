@@ -1,9 +1,10 @@
 package example
 
-import scala.collection.mutable._
-
 object Example {
   val b = 1.asInstanceOf[Long]
 
-  val listBuffer = ListBuffer()
+  object WeekDay extends Enumeration {
+    type WeekDay = Value
+    val Mon, Tue, Wed, Thu, Fri, Sat, Sun = Value
+  }
 }

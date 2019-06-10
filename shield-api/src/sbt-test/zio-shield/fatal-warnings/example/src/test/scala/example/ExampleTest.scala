@@ -1,6 +1,6 @@
 package example
 
-object Example {
+object ExampleTest {
   val b = 1.asInstanceOf[Long]
 
   object WeekDay extends Enumeration {

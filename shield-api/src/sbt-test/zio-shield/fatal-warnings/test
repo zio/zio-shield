@@ -1,2 +1,8 @@
+-> example/shield
+-> example/test:shield
+
+> clean
 > compile
 -> example/shield
+> test:compile
+-> example/test:shield
