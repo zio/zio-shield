@@ -4,5 +4,4 @@ addSbtPlugin(
 
 libraryDependencies ++= Seq(
   "org.scala-sbt" %% "scripted-plugin" % sbtVersion.value,
-  "com.geirsson" %% "coursier-small" % "1.3.3"
 )

@@ -1,4 +1,4 @@
-package com.vovapolu.shield
+package com.vovapolu.shield.sbt
 
 import sbt.internal.util.FeedbackProvidedException
 

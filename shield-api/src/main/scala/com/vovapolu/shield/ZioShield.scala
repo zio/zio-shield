@@ -4,7 +4,6 @@ import java.nio.file.Path
 
 import metaconfig.Conf
 import metaconfig.typesafeconfig.typesafeConfigMetaconfigParser
-import sbt.util.Logger
 import scalafix.internal.rule.DisableSyntax
 import scalafix.internal.scaluzzi.DisableLegacy
 import scalafix.internal.v1.Rules
@@ -45,18 +44,20 @@ object ZioShield {
   }
 
   def run(scalacOptions: List[String],
-          files: List[Path],
-          fatalWarnings: Boolean,
-          logger: Logger): Unit = {
+          files: List[Path]): List[ZioShieldDiagnostic] =
+    run(ZioShieldExtension.semanticdbTargetRoot(scalacOptions), files)
 
-    def lintError(msg: RuleDiagnostic): String = {
-      import scalafix.internal.util.PositionSyntax._
-      msg.position.formatMessage(msg.severity.toString, msg.message)
-    }
+  def run(semanticDbTargetRoot: Option[String],
+          files: List[Path]): List[ZioShieldDiagnostic] = {
 
-    def patchError(oldDoc: String, newDoc: String, path: Path): Option[String] =
+    def lint(path: Path, msg: RuleDiagnostic): ZioShieldDiagnostic =
+      ZioShieldDiagnostic.Lint(path, msg.position, msg.message)
+
+    def patch(oldDoc: String,
+              newDoc: String,
+              path: Path): Option[ZioShieldDiagnostic] =
       if (oldDoc != newDoc) {
-        Some(s"Detected patch for ${path.toString}:\n$newDoc")
+        Some(ZioShieldDiagnostic.Patch(path, oldDoc, newDoc))
       } else {
         None
       }
@@ -67,29 +68,24 @@ object ZioShield {
       val (newDoc, msgs) =
         syntaticRules.syntacticPatch(synDoc, suppress = false)
       val synErrors =
-        patchError(input.text, newDoc, f).toList ++ msgs.map(lintError)
+        patch(input.text, newDoc, f).toList ++ msgs.map(lint(f, _))
 
       val semDoc = ZioShieldExtension.semanticDocumentFromPath(
         synDoc,
         f,
-        scalacOptions
+        semanticDbTargetRoot
       )
       val semErrors = semDoc match {
         case Left(err) =>
-          List(
-            s"Unable to load SemanticDb information for ${f.toString}: $err. Semantic rules are disabled.")
+          List(ZioShieldDiagnostic.SemanticFailure(f, err))
         case Right(doc) =>
           val (newDoc, msgs) = sematicRules.semanticPatch(doc, suppress = false)
-          patchError(input.text, newDoc, f).toList ++ msgs.map(lintError)
+          patch(input.text, newDoc, f).toList ++ msgs.map(lint(f, _))
       }
 
       synErrors ++ semErrors
     }
 
-    if (fatalWarnings) {
-      throw new ZioShieldFailed(errors)
-    } else {
-      errors.foreach(e => logger.warn(e))
-    }
+    errors
   }
 }

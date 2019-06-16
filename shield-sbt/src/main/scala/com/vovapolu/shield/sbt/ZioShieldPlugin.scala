@@ -1,5 +1,6 @@
-package com.vovapolu.shield
+package com.vovapolu.shield.sbt
 
+import com.vovapolu.shield.ZioShield
 import sbt.Keys._
 import sbt.plugins.JvmPlugin
 import sbt.{Def, _}
@@ -40,9 +41,16 @@ object ZioShieldPlugin extends AutoPlugin {
       config: Configuration
   ): Def.Initialize[Task[Unit]] =
     Def.task {
-      ZioShield.run(scalacOptions.in(config).value.toList,
-                    unmanagedSources.in(config).value.map(_.toPath).toList,
-                    shieldFatalWarnings.value,
-                    streams.value.log)
+      val errors =
+        ZioShield.run(scalacOptions.in(config).value.toList,
+                      unmanagedSources.in(config).value.map(_.toPath).toList)
+
+      val log = streams.value.log
+
+      if (shieldFatalWarnings.value) {
+        throw new ZioShieldFailed(errors.map(_.consoleMessage))
+      } else {
+        errors.foreach(e => log.warn(e.consoleMessage))
+      }
     }
 }
