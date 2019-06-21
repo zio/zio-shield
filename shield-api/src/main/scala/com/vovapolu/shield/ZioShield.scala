@@ -9,46 +9,26 @@ import scalafix.internal.scaluzzi.DisableLegacy
 import scalafix.internal.v1.Rules
 import scalafix.lint.RuleDiagnostic
 import scalafix.shield.ZioShieldExtension
-import scalafix.v1.{Configuration, SyntacticDocument}
+import scalafix.v1.{Configuration, Rule, SyntacticDocument}
 
 import scala.io.Source
 
-object ZioShield {
+class ZioShield private (val semanticDbTargetRoot: Option[String]) {
+  def apply(syntacticRules: Rules, semanticRules: Rules): ConfiguredZioShield =
+    new ConfiguredZioShield(this, syntacticRules, semanticRules)
 
-  private val shieldConf: Conf = Conf
-    .parseString(
-      Source
-        .fromInputStream(
-          getClass.getClassLoader.getResourceAsStream("shield.scalafix.conf"))
-        .mkString)
-    .get
+  def apply(syntacticRules: List[Rule],
+            semanticRules: List[Rule]): ConfiguredZioShield =
+    new ConfiguredZioShield(this, Rules(syntacticRules), Rules(semanticRules))
+}
 
-  private val conf = Configuration().withConf(shieldConf)
+class ConfiguredZioShield(zioShieldConfig: ZioShield,
+                                  syntacticRules: Rules,
+                                  semanticRules: Rules) {
 
-  private val all = Rules.all(this.getClass.getClassLoader)
+  def run(file: Path): List[ZioShieldDiagnostic] = run(List(file))
 
-  val syntaticRules: Rules = {
-    val selectedRules = all.collect {
-      case r: DisableSyntax => r
-    }
-
-    Rules(selectedRules.map(_.withConfiguration(conf).get))
-  }
-
-  val sematicRules: Rules = {
-    val selectedRules = all.collect {
-      case r: DisableLegacy => r
-    }
-
-    Rules(selectedRules.map(_.withConfiguration(conf).get))
-  }
-
-  def run(scalacOptions: List[String],
-          files: List[Path]): List[ZioShieldDiagnostic] =
-    run(ZioShieldExtension.semanticdbTargetRoot(scalacOptions), files)
-
-  def run(semanticDbTargetRoot: Option[String],
-          files: List[Path]): List[ZioShieldDiagnostic] = {
+  def run(files: List[Path]): List[ZioShieldDiagnostic] = {
 
     def lint(path: Path, msg: RuleDiagnostic): ZioShieldDiagnostic =
       ZioShieldDiagnostic.Lint(path, msg.position, msg.message)
@@ -66,20 +46,21 @@ object ZioShield {
       val input = meta.Input.File(f)
       val synDoc = SyntacticDocument.fromInput(input)
       val (newDoc, msgs) =
-        syntaticRules.syntacticPatch(synDoc, suppress = false)
+        syntacticRules.syntacticPatch(synDoc, suppress = false)
       val synErrors =
         patch(input.text, newDoc, f).toList ++ msgs.map(lint(f, _))
 
       val semDoc = ZioShieldExtension.semanticDocumentFromPath(
         synDoc,
         f,
-        semanticDbTargetRoot
+        zioShieldConfig.semanticDbTargetRoot
       )
       val semErrors = semDoc match {
         case Left(err) =>
           List(ZioShieldDiagnostic.SemanticFailure(f, err))
         case Right(doc) =>
-          val (newDoc, msgs) = sematicRules.semanticPatch(doc, suppress = false)
+          val (newDoc, msgs) =
+            semanticRules.semanticPatch(doc, suppress = false)
           patch(input.text, newDoc, f).toList ++ msgs.map(lint(f, _))
       }
 
@@ -87,5 +68,42 @@ object ZioShield {
     }
 
     errors
+  }
+}
+
+object ZioShield {
+
+  def apply(semanticDbTargetRoot: Option[String]): ZioShield =
+    new ZioShield(semanticDbTargetRoot)
+
+  def apply(scalacOptions: List[String]): ZioShield =
+    new ZioShield(ZioShieldExtension.semanticdbTargetRoot(scalacOptions))
+
+  private val shieldConf: Conf = Conf
+    .parseString(
+      Source
+        .fromInputStream(
+          getClass.getClassLoader.getResourceAsStream("shield.scalafix.conf"))
+        .mkString)
+    .get
+
+  private val conf = Configuration().withConf(shieldConf)
+
+  private val all = Rules.all(this.getClass.getClassLoader)
+
+  val allSyntacticRules: Rules = {
+    val selectedRules = all.collect {
+      case r: DisableSyntax => r
+    }
+
+    Rules(selectedRules.map(_.withConfiguration(conf).get))
+  }
+
+  val allSemanticRules: Rules = {
+    val selectedRules = all.collect {
+      case r: DisableLegacy => r
+    }
+
+    Rules(selectedRules.map(_.withConfiguration(conf).get))
   }
 }

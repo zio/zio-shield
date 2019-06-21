@@ -7,10 +7,17 @@ ThisBuild / organization := "com.vovapolu"
 lazy val shieldApi = (project in file("shield-api"))
   .settings(
     name := "zio-shield-api",
-    libraryDependencies ++= Seq(scalafixCore,
-                                scalafixRules,
-                                scalafixReflect,
-                                scaluzzi)
+    libraryDependencies ++= Seq(
+      scalafixCore,
+      scalafixRules,
+      scalafixReflect,
+      scaluzzi,
+      utest % "test",
+      compilerPlugin(
+        "org.scalameta" % "semanticdb-scalac" % "4.1.0" cross CrossVersion.full)
+    ),
+    scalacOptions += "-Yrangepos",
+    testFrameworks += new TestFramework("utest.runner.Framework")
   )
 
 lazy val shieldSbt = (project in file("shield-sbt"))

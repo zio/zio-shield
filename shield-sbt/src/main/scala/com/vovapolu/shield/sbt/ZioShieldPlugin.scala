@@ -41,9 +41,12 @@ object ZioShieldPlugin extends AutoPlugin {
       config: Configuration
   ): Def.Initialize[Task[Unit]] =
     Def.task {
+      val zioShield = ZioShield(scalacOptions.in(config).value.toList)(
+        ZioShield.allSyntacticRules,
+        ZioShield.allSemanticRules)
+
       val errors =
-        ZioShield.run(scalacOptions.in(config).value.toList,
-                      unmanagedSources.in(config).value.map(_.toPath).toList)
+        zioShield.run(unmanagedSources.in(config).value.map(_.toPath).toList)
 
       val log = streams.value.log
 
