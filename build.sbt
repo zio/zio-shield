@@ -13,6 +13,7 @@ lazy val shieldApi = (project in file("shield-api"))
       scalafixReflect,
       scaluzzi,
       utest % "test",
+      zio % "test",
       compilerPlugin(
         "org.scalameta" % "semanticdb-scalac" % "4.1.0" cross CrossVersion.full)
     ),

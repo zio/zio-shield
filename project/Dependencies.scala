@@ -6,4 +6,5 @@ object Dependencies {
   lazy val scalafixReflect = "ch.epfl.scala" % "scalafix-reflect" % "0.9.5" cross CrossVersion.full
   lazy val scaluzzi = "com.github.vovapolu" %% "scaluzzi" % "0.1.2"
   lazy val utest = "com.lihaoyi" %% "utest" % "0.7.1"
+  lazy val zio = "dev.zio" %% "zio" % "1.0.0-RC8-6"
 }
