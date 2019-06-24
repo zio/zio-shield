@@ -4,13 +4,14 @@ import scalafix.internal.scaluzzi.Disable.ContextTraverser
 import scalafix.v1._
 import scala.meta._
 
-class ZioBlockDetector(outsideBlock: PartialFunction[Tree, Patch])(
+class ZioBlockDetector private (
+    outsideBlock: PartialFunction[Tree, List[Patch]])(
     implicit doc: SemanticDocument) {
 
   import ZioBlockDetector._
 
   def traverse(tree: meta.Tree): Patch = {
-    new ContextTraverser[Patch, Boolean](false)({
+    new ContextTraverser[List[Patch], Boolean](false)({
       case (_: Import, _) => Right(false)
       case (Term.Apply(
               Term.Select(safeBlocksMatcher(block), Term.Name("apply")),
@@ -24,12 +25,21 @@ class ZioBlockDetector(outsideBlock: PartialFunction[Tree, Patch])(
       case (_: Term.Function, _) =>
         Right(false) // reset blocked symbols in (...) => (...)
       case (x, false) if outsideBlock.isDefinedAt(x) => Left(outsideBlock(x))
-    }).result(tree).asPatch
+    }).result(tree).flatten.asPatch
   }
 }
 
 object ZioBlockDetector {
-  private val safeBlocks = List(
+
+  def apply(outsideBlock: PartialFunction[Tree, List[Patch]])(
+      implicit doc: SemanticDocument): ZioBlockDetector =
+    new ZioBlockDetector(outsideBlock)
+
+  def fromSingleLintPerTree(outsideBlock: PartialFunction[Tree, Patch])(
+      implicit doc: SemanticDocument) =
+    new ZioBlockDetector(outsideBlock.andThen(List(_)))
+
+  val safeBlocks = List(
     "zio/Task",
     "zio/IO",
     "zio/UIO",
@@ -42,7 +52,8 @@ object ZioBlockDetector {
     "zio/ZIOFunctions.halt"
   )
 
-  private val safeBlocksMatcher = SymbolMatcher.normalized(safeBlocks: _*)
+  val safeBlocksMatcher: SymbolMatcher =
+    SymbolMatcher.normalized(safeBlocks: _*)
 
   def lintSymbols(symbols: List[String])(
       lintMessage: PartialFunction[Symbol, String])(

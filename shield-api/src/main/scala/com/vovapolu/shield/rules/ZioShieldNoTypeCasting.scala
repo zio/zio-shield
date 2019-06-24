@@ -11,11 +11,11 @@ object ZioShieldNoTypeCasting extends SemanticRule("ZioShieldNoTypeCasting") {
       "scala/Any#isInstanceOf()."
     )
 
-    val noTypeCastingPf: PartialFunction[Tree, Patch] =
+    val pf: PartialFunction[Tree, Patch] =
       ZioBlockDetector.lintSymbols(typeCastingSymbols) {
         case _ => "type casting"
       } // TODO Also add pattern match detection
 
-    new ZioBlockDetector(noTypeCastingPf).traverse(doc.tree)
+    ZioBlockDetector.fromSingleLintPerTree(pf).traverse(doc.tree)
   }
 }

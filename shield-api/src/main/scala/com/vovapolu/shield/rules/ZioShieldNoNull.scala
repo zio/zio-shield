@@ -11,7 +11,7 @@ object ZioShieldNoNull extends SemanticRule("ZioShieldNoNull") {
       "java/io/File.getParent"
     ) // TODO possible can be constructed via Java reflection or bytecode analysis
 
-    val noNullPf: PartialFunction[Tree, Patch] =
+    val pf: PartialFunction[Tree, Patch] =
       ZioBlockDetector.lintSymbols(nullableSymbols) {
         case _ => "nullable method"
       } orElse {
@@ -19,6 +19,6 @@ object ZioShieldNoNull extends SemanticRule("ZioShieldNoNull") {
           Patch.lint(Diagnostic("", "null is forbidden", l.pos))
       }
 
-    new ZioBlockDetector(noNullPf).traverse(doc.tree)
+    ZioBlockDetector.fromSingleLintPerTree(pf).traverse(doc.tree)
   }
 }

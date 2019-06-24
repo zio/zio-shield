@@ -17,11 +17,11 @@ object ZioShieldNoPartialFunctions
       "scala/collection/IterableLike#head()."
     ) // TODO Java lang reflect getExceptionTypes or athrow in bytecode
 
-    val noThrowCatchPf: PartialFunction[Tree, Patch] =
+    val pf: PartialFunction[Tree, Patch] =
       ZioBlockDetector.lintSymbols(throwSymbols) {
         case _ => "not a total function"
       }
 
-    new ZioBlockDetector(noThrowCatchPf).traverse(doc.tree)
+    ZioBlockDetector.fromSingleLintPerTree(pf).traverse(doc.tree)
   }
 }
