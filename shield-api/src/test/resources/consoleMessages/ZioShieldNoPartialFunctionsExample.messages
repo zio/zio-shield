@@ -1,0 +1,11 @@
+ZioShieldNoPartialFunctionsExample.scala:6:17: error: not a total function
+  Option("abc").get
+                ^^^
+---
+ZioShieldNoPartialFunctionsExample.scala:7:10: error: not a total function
+  List().head
+         ^^^^
+---
+ZioShieldNoPartialFunctionsExample.scala:8:19: error: not a total function
+  Left(123).right.get
+                  ^^^

@@ -13,7 +13,8 @@ import scalafix.v1.{Configuration, Rule, SyntacticDocument}
 
 import scala.io.Source
 
-class ZioShield private (val semanticDbTargetRoot: Option[String]) {
+class ZioShield private (val semanticDbTargetRoot: Option[String],
+                         val fullClasspath: List[Path]) {
   def apply(syntacticRules: Rules, semanticRules: Rules): ConfiguredZioShield =
     new ConfiguredZioShield(this, syntacticRules, semanticRules)
 
@@ -23,8 +24,8 @@ class ZioShield private (val semanticDbTargetRoot: Option[String]) {
 }
 
 class ConfiguredZioShield(zioShieldConfig: ZioShield,
-                                  syntacticRules: Rules,
-                                  semanticRules: Rules) {
+                          syntacticRules: Rules,
+                          semanticRules: Rules) {
 
   def run(file: Path): List[ZioShieldDiagnostic] = run(List(file))
 
@@ -53,7 +54,8 @@ class ConfiguredZioShield(zioShieldConfig: ZioShield,
       val semDoc = ZioShieldExtension.semanticDocumentFromPath(
         synDoc,
         f,
-        zioShieldConfig.semanticDbTargetRoot
+        zioShieldConfig.semanticDbTargetRoot,
+        zioShieldConfig.fullClasspath
       )
       val semErrors = semDoc match {
         case Left(err) =>
@@ -73,11 +75,13 @@ class ConfiguredZioShield(zioShieldConfig: ZioShield,
 
 object ZioShield {
 
-  def apply(semanticDbTargetRoot: Option[String]): ZioShield =
-    new ZioShield(semanticDbTargetRoot)
+  def apply(semanticDbTargetRoot: Option[String],
+            fullClasspath: List[Path]): ZioShield =
+    new ZioShield(semanticDbTargetRoot, fullClasspath)
 
-  def apply(scalacOptions: List[String]): ZioShield =
-    new ZioShield(ZioShieldExtension.semanticdbTargetRoot(scalacOptions))
+  def apply(scalacOptions: List[String], fullClasspath: List[Path]): ZioShield =
+    new ZioShield(ZioShieldExtension.semanticdbTargetRoot(scalacOptions),
+                  fullClasspath)
 
   private val shieldConf: Conf = Conf
     .parseString(

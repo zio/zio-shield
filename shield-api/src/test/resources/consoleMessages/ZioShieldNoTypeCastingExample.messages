@@ -1,0 +1,7 @@
+ZioShieldNoTypeCastingExample.scala:6:5: error: type casting
+  1.asInstanceOf[Long]
+    ^^^^^^^^^^^^
+---
+ZioShieldNoTypeCastingExample.scala:7:5: error: type casting
+  2.isInstanceOf[Long]
+    ^^^^^^^^^^^^

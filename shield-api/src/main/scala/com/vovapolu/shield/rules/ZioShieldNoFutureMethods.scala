@@ -4,7 +4,6 @@ import scalafix.v1._
 
 import scala.collection.mutable
 import scala.meta._
-import scala.util.Try
 
 object ZioShieldNoFutureMethods
     extends SemanticRule("ZioShieldNoFutureMethods") {
@@ -12,18 +11,16 @@ object ZioShieldNoFutureMethods
   override def fix(implicit doc: SemanticDocument): Patch = {
 
     def getType(symbol: Symbol): Option[SemanticType] = {
-      println(symbol)
-      println(Try(symbol.info.get.signature))
-      Try(symbol.info.get.signature).toOption match {
-        case Some(MethodSignature(_, _, returnType)) =>
+      symbol.info.get.signature match {
+        case MethodSignature(_, _, returnType) =>
           Some(returnType)
         case _ => None
       }
     }
 
-    def detectFutureType(tpe: SemanticType): Boolean = {
-      println(tpe)
-      false
+    def detectFutureType(tpe: SemanticType): Boolean = tpe match {
+      case TypeRef(_, s, _) if s.value == "scala/concurrent/Future#" => true
+      case _                                                         => false
     }
 
     val traverser = new Traverser {

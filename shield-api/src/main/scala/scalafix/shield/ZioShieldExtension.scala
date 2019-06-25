@@ -1,5 +1,7 @@
 package scalafix.shield
 
+import java.nio.file.Path
+
 import scalafix.internal.reflect.ClasspathOps
 import scalafix.v1.{SemanticDocument, SyntacticDocument}
 
@@ -9,11 +11,11 @@ import scala.meta.io.{AbsolutePath, Classpath}
 import scala.util.{Failure, Success, Try}
 
 object ZioShieldExtension {
-  def symtab(
-      semanticDbTargetRoot: Option[String]): Either[String, SymbolTable] = {
+  def symtab(semanticDbTargetRoot: Option[String],
+             fullClasspath: List[Path]): Either[String, SymbolTable] = {
     Try(
       ClasspathOps.newSymbolTable(
-        classpath = classpath(semanticDbTargetRoot),
+        classpath = classpath(semanticDbTargetRoot, fullClasspath),
         out = System.out
       )
     ) match {
@@ -31,31 +33,37 @@ object ZioShieldExtension {
       .map(_.stripPrefix(flag))
   }
 
-  def classpath(semanticDbTargetRoot: Option[String]): Classpath = {
+  def classpath(semanticDbTargetRoot: Option[String],
+                fullClasspath: List[Path]): Classpath = {
     val targetroot = semanticDbTargetRoot
       .map(option => Classpath(option))
       .getOrElse(Classpath(Nil))
-    val baseClasspath = {
+    val baseClasspath = if (fullClasspath.isEmpty) {
       val roots = PathIO.workingDirectory :: Nil
       ClasspathOps.autoClasspath(roots)
+    } else {
+      Classpath(fullClasspath.map(AbsolutePath(_)))
     }
     baseClasspath ++ targetroot
   }
 
-  def classLoader(semanticDbTargetRoot: Option[String]): ClassLoader =
-    ClasspathOps.toOrphanClassLoader(classpath(semanticDbTargetRoot))
+  def classLoader(semanticDbTargetRoot: Option[String],
+                  fullClasspath: List[Path]): ClassLoader =
+    ClasspathOps.toOrphanClassLoader(
+      classpath(semanticDbTargetRoot, fullClasspath))
 
   def semanticDocumentFromPath(
       doc: SyntacticDocument,
-      path: java.nio.file.Path,
-      semanticDbTargetRoot: Option[String]): Either[String, SemanticDocument] =
+      path: Path,
+      semanticDbTargetRoot: Option[String],
+      fullClasspath: List[Path]): Either[String, SemanticDocument] =
     for {
-      s <- symtab(semanticDbTargetRoot)
+      s <- symtab(semanticDbTargetRoot, fullClasspath)
     } yield
       SemanticDocument.fromPath(
         doc,
         AbsolutePath(path).toRelative(PathIO.workingDirectory),
-        classLoader(semanticDbTargetRoot),
+        classLoader(semanticDbTargetRoot, fullClasspath),
         s
       )
 }

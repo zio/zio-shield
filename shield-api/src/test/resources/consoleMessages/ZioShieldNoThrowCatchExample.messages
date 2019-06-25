@@ -1,0 +1,7 @@
+ZioShieldNoThrowCatchExample.scala:6:3: error: try/catch
+  try {
+  ^
+---
+ZioShieldNoThrowCatchExample.scala:11:3: error: throw
+  throw new RuntimeException("boom!")
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,0 +1,27 @@
+ZioShieldNoSideEffectsExample.scala:6:7: error: calling unit method
+  def boom(): Unit = {
+      ^^^^
+---
+ZioShieldNoSideEffectsExample.scala:7:5: error: possible side-effect
+    println("boom")
+    ^^^^^^^
+---
+ZioShieldNoSideEffectsExample.scala:10:3: error: possible side-effect
+  println("abc")
+  ^^^^^^^
+---
+ZioShieldNoSideEffectsExample.scala:11:3: error: possible side-effect
+  println()
+  ^^^^^^^
+---
+ZioShieldNoSideEffectsExample.scala:12:3: error: calling unit method
+  boom()
+  ^^^^
+---
+ZioShieldNoSideEffectsExample.scala:13:3: error: calling unit method
+  boom
+  ^^^^
+---
+ZioShieldNoSideEffectsExample.scala:14:17: error: calling unit method
+  List(1, 2, 3).foreach(i => ())
+                ^^^^^^^

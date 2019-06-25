@@ -1,0 +1,11 @@
+ZioShieldNoIgnoredExpressionsExample.scala:6:3: error: ignored expression
+  println("hi!")
+  ^^^^^^^^^^^^^^
+---
+ZioShieldNoIgnoredExpressionsExample.scala:7:3: error: ignored expression
+  123
+  ^^^
+---
+ZioShieldNoIgnoredExpressionsExample.scala:9:3: error: ignored expression
+  boom
+  ^^^^

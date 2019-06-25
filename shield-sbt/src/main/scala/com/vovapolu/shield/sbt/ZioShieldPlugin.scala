@@ -41,7 +41,8 @@ object ZioShieldPlugin extends AutoPlugin {
       config: Configuration
   ): Def.Initialize[Task[Unit]] =
     Def.task {
-      val zioShield = ZioShield(scalacOptions.in(config).value.toList)(
+      val zioShield = ZioShield(scalacOptions.in(config).value.toList,
+                                fullClasspath.value.map(_.data.toPath).toList)(
         ZioShield.allSyntacticRules,
         ZioShield.allSemanticRules)
 

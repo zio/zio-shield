@@ -3,7 +3,6 @@ package com.vovapolu.shield.rules
 import scalafix.v1._
 
 import scala.meta._
-import scala.util.Try
 
 object ZioShieldNoSideEffects extends SemanticRule("ZioShieldNoSideEffects") {
 
@@ -21,9 +20,7 @@ object ZioShieldNoSideEffects extends SemanticRule("ZioShieldNoSideEffects") {
     }
 
     def isUnitMethod(s: Symbol): Boolean = {
-      //println(s.value)
-      //println(Try(s.info).toOption.flatten.map(_.signature.structure))
-      Try(s.info).toOption.flatten.map(_.signature) match {
+      s.info.map(_.signature) match {
         case Some(MethodSignature(_, _, TypeRef(_, s: Symbol, List())))
             if s.value == "scala/Unit#" =>
           true
