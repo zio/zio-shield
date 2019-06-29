@@ -1,6 +1,5 @@
 package zio.shield.sbt
 
-import com.vovapolu.shield.ZioShield
 import sbt.Keys._
 import sbt.plugins.JvmPlugin
 import sbt.{Def, _}

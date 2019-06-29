@@ -26,7 +26,7 @@ object ConsoleMessagesTest extends TestSuite {
 
   def consoleMessageTest(rule: Rule): Unit = {
     val srcPath = testsPath.resolve(
-      s"shield-api/src/test/scala/com/vovapolu/shield/rules/examples/${rule.name.toString}Example.scala")
+      s"shield-api/src/test/scala/zio/shield/rules/examples/${rule.name.toString}Example.scala")
 
     val zioShieldInstance =
       ZioShield(None, fullClasspath)(List.empty, List(rule))

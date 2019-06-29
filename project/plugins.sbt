@@ -1,5 +1,5 @@
 addSbtPlugin(
-  "io.get-coursier" % "sbt-coursier" % coursier.util.Properties.version
+  "io.get-coursier" % "sbt-coursier" % "1.1.0-M6"
 )
 
 libraryDependencies ++= Seq(
