@@ -1,4 +1,6 @@
 # ZIO Shield
+[![Build Status](https://travis-ci.com/vovapolu/zio-shield.svg?token=v3sLpmndNBqRuuwBdToF&branch=master)](https://travis-ci.com/vovapolu/zio-shield)
+
 Enforce best coding practices with ZIO. 
 Powered by [Scalafix](https://scalacenter.github.io/scalafix/) and [Scalazzi rules](https://github.com/scalaz/scalazzi).
 
