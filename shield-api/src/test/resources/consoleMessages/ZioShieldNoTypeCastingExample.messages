@@ -5,3 +5,11 @@ ZioShieldNoTypeCastingExample.scala:6:5: error: type casting
 ZioShieldNoTypeCastingExample.scala:7:5: error: type casting
   2.isInstanceOf[Long]
     ^^^^^^^^^^^^
+---
+ZioShieldNoTypeCastingExample.scala:9:10: error: pattern match against type
+    case i: Int => i.toLong
+         ^^^^^^
+---
+ZioShieldNoTypeCastingExample.scala:10:10: error: pattern match against type
+    case l: Long => l
+         ^^^^^^^

@@ -2,11 +2,11 @@ import Dependencies._
 
 ThisBuild / scalaVersion := "2.12.8"
 ThisBuild / version := "0.3.0-SNAPSHOT"
-ThisBuild / organization := "com.vovapolu"
+ThisBuild / organization := "zio.shield"
 
 lazy val shieldApi = (project in file("shield-api"))
   .settings(
-    name := "zio-shield-api",
+    moduleName := "zio-shield-api",
     libraryDependencies ++= Seq(
       scalafixCore,
       scalafixRules,
@@ -25,7 +25,7 @@ lazy val shieldSbt = (project in file("shield-sbt"))
   .dependsOn(shieldApi)
   .enablePlugins(SbtPlugin)
   .settings(
-    name := "zio-shield",
+    moduleName := "zio-shield",
     scriptedBufferLog := false,
     scriptedLaunchOpts ++= Seq(
       "-Xmx2048M",

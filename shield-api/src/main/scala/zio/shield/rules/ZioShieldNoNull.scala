@@ -2,18 +2,17 @@ package zio.shield.rules
 
 import scala.meta._
 import scalafix.v1._
+import zio.shield.tag.{Tag, TagChecker}
 
-object ZioShieldNoNull extends SemanticRule("ZioShieldNoNull") {
+class ZioShieldNoNull(tagChecker: TagChecker)
+    extends SemanticRule("ZioShieldNoNull") {
 
   override def fix(implicit doc: SemanticDocument): Patch = {
 
-    val nullableSymbols = List(
-      "java/io/File.getParent"
-    ) // TODO possible can be constructed via Java reflection or bytecode analysis
-
     val pf: PartialFunction[Tree, Patch] =
-      ZioBlockDetector.lintSymbols(nullableSymbols) {
-        case _ => "nullable method"
+      ZioBlockDetector.lintFunction(s =>
+        tagChecker.check(s.value, Tag.Nullable).getOrElse(false)) {
+        case _ => "possible nullable symbol"
       } orElse {
         case l: Lit.Null =>
           Patch.lint(Diagnostic("", "null is forbidden", l.pos))

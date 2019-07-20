@@ -24,7 +24,7 @@ object ConsoleMessagesTest extends TestSuite {
     }
   }
 
-  def consoleMessageTest(rule: Rule): Unit = {
+  def consoleMessageTest(rule: Rule, verbose: Boolean = false): Unit = {
     val srcPath = testsPath.resolve(
       s"shield-api/src/test/scala/zio/shield/rules/examples/${rule.name.toString}Example.scala")
 
@@ -40,7 +40,21 @@ object ConsoleMessagesTest extends TestSuite {
       s"consoleMessages/${rule.name.toString}Example.messages")
     val targetMessages = messagesResource.mkString.split("\n---\n").toList
 
-    consoleMessages ==> targetMessages
+    if (verbose) {
+      if (consoleMessages != targetMessages) {
+        val msg =
+          s"""Messages are not equal
+            |
+            |Expected messages:
+            |${targetMessages.mkString("\n---\n")}
+            |
+            |Actual messages:
+            |${consoleMessages.mkString("\n---\n")}""".stripMargin
+        Predef.assert(false, msg)
+      }
+    } else {
+      consoleMessages ==> targetMessages
+    }
   }
 
   val tests = Tests {
@@ -63,7 +77,10 @@ object ConsoleMessagesTest extends TestSuite {
       consoleMessageTest(ZioShieldNoNull)
     }
     test("ZioShieldNoTypeCasting") {
-      consoleMessageTest(ZioShieldNoTypeCasting)
+      consoleMessageTest(ZioShieldNoTypeCasting, verbose = true)
+    }
+    test("ZioShieldNoReflectionExample") {
+      consoleMessageTest(ZioShieldNoReflection)
     }
   }
 }

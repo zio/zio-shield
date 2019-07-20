@@ -9,27 +9,65 @@ import scalafix.internal.scaluzzi.DisableLegacy
 import scalafix.internal.v1.Rules
 import scalafix.lint.RuleDiagnostic
 import scalafix.shield.ZioShieldExtension
-import scalafix.v1.{Configuration, Rule, SyntacticDocument}
+import scalafix.v1.{Configuration, SyntacticDocument}
+import zio.shield.flow.{FlowCache, FlowCacheTagCheckerImpl}
+import zio.shield.rules.{ZioShieldRule, ZioShieldRules}
+import zio.shield.tag.TagChecker
 
 import scala.io.Source
 
 class ZioShield private (val semanticDbTargetRoot: Option[String],
                          val fullClasspath: List[Path]) {
-  def apply(syntacticRules: Rules, semanticRules: Rules): ConfiguredZioShield =
+  def apply(syntacticRules: ZioShieldRules,
+            semanticRules: ZioShieldRules): ConfiguredZioShield =
     new ConfiguredZioShield(this, syntacticRules, semanticRules)
 
-  def apply(syntacticRules: List[Rule],
-            semanticRules: List[Rule]): ConfiguredZioShield =
-    new ConfiguredZioShield(this, Rules(syntacticRules), Rules(semanticRules))
+  def apply(syntacticRules: List[ZioShieldRule],
+            semanticRules: List[ZioShieldRule]): ConfiguredZioShield =
+    new ConfiguredZioShield(this,
+                            ZioShieldRules(syntacticRules),
+                            ZioShieldRules(semanticRules))
 }
 
 class ConfiguredZioShield(zioShieldConfig: ZioShield,
-                          syntacticRules: Rules,
-                          semanticRules: Rules) {
+                          syntacticRules: ZioShieldRules,
+                          semanticRules: ZioShieldRules) {
+
+  private val flowCache = FlowCache.empty
+
+  val tagChecker: TagChecker = new FlowCacheTagCheckerImpl(flowCache)
 
   def run(file: Path): List[ZioShieldDiagnostic] = run(List(file))
 
   def run(files: List[Path]): List[ZioShieldDiagnostic] = {
+
+    val inputs = files.map(meta.Input.File(_))
+
+    val synDocs = inputs.map { i =>
+      i.path.toNIO -> SyntacticDocument.fromInput(i)
+    }.toMap
+
+    val (semFailErrors, semDocs) = {
+      val docsOrErrors = inputs.map { i =>
+        val synDoc = synDocs(i.path.toNIO)
+        i.path.toNIO -> ZioShieldExtension.semanticDocumentFromPath(
+          synDoc,
+          i.path.toNIO,
+          zioShieldConfig.semanticDbTargetRoot,
+          zioShieldConfig.fullClasspath
+        )
+      }
+      val errors = docsOrErrors.collect {
+        case (path, Left(err)) => ZioShieldDiagnostic.SemanticFailure(f, err)
+      }
+      val docs = docsOrErrors.collect {
+        case (path, Right(doc)) => path -> doc
+      }
+
+      (errors, docs.toMap)
+    }
+
+    flowCache.build(semDocs)
 
     def lint(path: Path, msg: RuleDiagnostic): ZioShieldDiagnostic =
       ZioShieldDiagnostic.Lint(path, msg.position, msg.message)
@@ -43,30 +81,23 @@ class ConfiguredZioShield(zioShieldConfig: ZioShield,
         None
       }
 
-    val errors = files.flatMap { f =>
-      val input = meta.Input.File(f)
-      val synDoc = SyntacticDocument.fromInput(input)
+    val errors = inputs.flatMap { input =>
+      val path = input.path.toNIO
+      val synDoc = synDocs(path)
+      val semDoc = semDocs(path)
+
       val (newDoc, msgs) =
         syntacticRules.syntacticPatch(synDoc, suppress = false)
       val synErrors =
-        patch(input.text, newDoc, f).toList ++ msgs.map(lint(f, _))
+        patch(input.text, newDoc, path).toList ++ msgs.map(lint(path, _))
 
-      val semDoc = ZioShieldExtension.semanticDocumentFromPath(
-        synDoc,
-        f,
-        zioShieldConfig.semanticDbTargetRoot,
-        zioShieldConfig.fullClasspath
-      )
-      val semErrors = semDoc match {
-        case Left(err) =>
-          List(ZioShieldDiagnostic.SemanticFailure(f, err))
-        case Right(doc) =>
-          val (newDoc, msgs) =
-            semanticRules.semanticPatch(doc, suppress = false)
-          patch(input.text, newDoc, f).toList ++ msgs.map(lint(f, _))
+      val semErrors = {
+        val (newDoc, msgs) =
+          semanticRules.semanticPatch(semDoc, suppress = false)
+        patch(input.text, newDoc, path).toList ++ msgs.map(lint(path, _))
       }
 
-      synErrors ++ semErrors
+      semFailErrors ++ synErrors ++ semErrors
     }
 
     errors
