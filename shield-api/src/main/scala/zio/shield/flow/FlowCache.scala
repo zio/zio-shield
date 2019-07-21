@@ -34,10 +34,12 @@ final case class FlowCache(
 
     semDocs.foreach {
       case (file, semDoc) =>
-        def updateForSymbol(symbol: Symbol, tree: Tree, edge: FlowEdge): Unit =
+        def updateForSymbol(symbol: Symbol,
+                            tree: Tree,
+                            edge: FlowEdge): Unit = {
           if (symbol.isGlobal) {
             files(symbol.value) = file
-            docs(symbol.value) = semDoc
+            docs(file) = semDoc
             trees(symbol.value) = tree
             userTags(symbol.value) = symbol
               .info(semDoc)
@@ -51,6 +53,7 @@ final case class FlowCache(
               .toBuffer
             symbols(symbol.value) = edge
           }
+        }
 
         def selectSymbolsFromPat(p: Pat): List[Symbol] = p match {
           case Pat.Var(name) => List(name.symbol(semDoc))
@@ -70,29 +73,64 @@ final case class FlowCache(
               updateForSymbol(d.name.symbol(semDoc),
                               d,
                               FunctionEdge.fromDefn(d)(semDoc))
+              super.apply(tree)
             case d: Defn.Class =>
               updateForSymbol(d.name.symbol(semDoc),
                               d,
                               ClassTraitEdge.fromDefn(d)(semDoc))
+              super.apply(tree)
             case d: Defn.Trait =>
               updateForSymbol(d.name.symbol(semDoc),
                               d,
                               ClassTraitEdge.fromDefn(d)(semDoc))
+              super.apply(tree)
             case d: Defn.Object =>
               updateForSymbol(d.name.symbol(semDoc),
                               d,
                               ObjectEdge.fromDefn(d)(semDoc))
+              super.apply(tree)
             case d: Defn.Val =>
               d.pats.flatMap(selectSymbolsFromPat).foreach { s =>
                 updateForSymbol(s, d, ValVarEdge.fromDefn(d)(semDoc))
               }
+              super.apply(tree)
             case d: Defn.Var =>
               d.pats.flatMap(selectSymbolsFromPat).foreach { s =>
                 updateForSymbol(s, d, ValVarEdge.fromDefn(d)(semDoc))
               }
+              super.apply(tree)
+            case _ => super.apply(tree)
           }
         }
+
+        traverser(semDoc.tree)
     }
+  }
+
+  def infer(inferrers: List[FlowInferrer[_]]): Unit = if (inferrers.nonEmpty) {
+    val processingSymbols = mutable.HashSet[String]()
+
+    def dfs(symbol: String): Unit = {
+      if (!processingSymbols.contains(symbol) &&
+          (!inferredTags.contains(symbol) || inferredTags(symbol).isEmpty)) {
+        processingSymbols += symbol
+        symbols.get(symbol).foreach {
+          // TODO mechanism to detect where to go for each inferrer
+          case FunctionEdge(_, _, innerSymbols) =>
+            innerSymbols.foreach(dfs)
+            inferredTags(symbol) =
+              inferrers.map(i => i.infer(this)(symbol)).toBuffer
+          case ValVarEdge(innerSymbols) =>
+            innerSymbols.foreach(dfs)
+            inferredTags(symbol) =
+              inferrers.map(i => i.infer(this)(symbol)).toBuffer
+          case _ =>
+        }
+        processingSymbols -= symbol
+      }
+    }
+
+    symbols.keys.foreach(dfs)
   }
 }
 

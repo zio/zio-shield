@@ -1,0 +1,55 @@
+ZioShieldNoNullExample2.scala:8:7: error: possible nullable symbol
+  def annotatedNullable(foo: String): String = null
+      ^^^^^^^^^^^^^^^^^
+---
+ZioShieldNoNullExample2.scala:8:48: error: null is forbidden
+  def annotatedNullable(foo: String): String = null
+                                               ^^^^
+---
+ZioShieldNoNullExample2.scala:10:7: error: possible nullable symbol
+  def defBodyNullable(foo: String): String = {
+      ^^^^^^^^^^^^^^^
+---
+ZioShieldNoNullExample2.scala:14:7: error: null is forbidden
+      null
+      ^^^^
+---
+ZioShieldNoNullExample2.scala:21:51: error: null is forbidden
+  def annotatedNonNullable(foo: String): String = null
+                                                  ^^^^
+---
+ZioShieldNoNullExample2.scala:23:7: error: possible nullable symbol
+  val valBodyNullable = null
+      ^^^^^^^^^^^^^^^
+---
+ZioShieldNoNullExample2.scala:23:25: error: null is forbidden
+  val valBodyNullable = null
+                        ^^^^
+---
+ZioShieldNoNullExample2.scala:25:7: error: possible nullable symbol
+  def usingNullable(foo: String): String = {
+      ^^^^^^^^^^^^^
+---
+ZioShieldNoNullExample2.scala:29:7: error: possible nullable symbol
+      defBodyNullable(foo)
+      ^^^^^^^^^^^^^^^
+---
+ZioShieldNoNullExample.scala:8:3: error: null is forbidden
+  null
+  ^^^^
+---
+ZioShieldNoNullExample.scala:10:27: error: possible nullable symbol
+  ZioShieldNoNullExample2.annotatedNullable("foo")
+                          ^^^^^^^^^^^^^^^^^
+---
+ZioShieldNoNullExample.scala:11:27: error: possible nullable symbol
+  ZioShieldNoNullExample2.defBodyNullable("foo")
+                          ^^^^^^^^^^^^^^^
+---
+ZioShieldNoNullExample.scala:14:27: error: possible nullable symbol
+  ZioShieldNoNullExample2.valBodyNullable
+                          ^^^^^^^^^^^^^^^
+---
+ZioShieldNoNullExample.scala:15:27: error: possible nullable symbol
+  ZioShieldNoNullExample2.usingNullable("foo")
+                          ^^^^^^^^^^^^^

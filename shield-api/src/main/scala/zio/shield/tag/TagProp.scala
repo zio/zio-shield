@@ -3,6 +3,7 @@ package zio.shield.tag
 import scalafix.patch.Patch
 
 import scala.annotation.StaticAnnotation
+import zio.shield.annotation
 
 sealed trait TagProof {
   def isEmpty: Boolean
@@ -20,7 +21,7 @@ object TagProof {
       if (patch.nonEmpty) Some(PatchProof(patch)) else None
   }
 
-  final case class AnnotationProof(anot: StaticAnnotation) extends TagProof {
+  final case class AnnotationProof(anot: String) extends TagProof {
     override def isEmpty: Boolean = false
   }
 
@@ -50,8 +51,36 @@ object TagProp {
 
   def fromAnnotationSymbol(symbol: String): Option[TagProp[_]] =
     symbol match {
-      case s =>
-        println(s"annotation symbol: $s")
-        None
+      case "zio/shield/annotation/package.nullable#" =>
+        Some(
+          TagProp(Tag.Nullable,
+                  cond = true,
+                  List(TagProof.AnnotationProof(symbol))))
+      case "zio/shield/annotation/package.nonNullable#" =>
+        Some(
+          TagProp(Tag.Nullable,
+                  cond = false,
+                  List(TagProof.AnnotationProof(symbol))))
+      case "zio/shield/annotation/package.pure#" =>
+        Some(
+          TagProp(Tag.Pure,
+                  cond = true,
+                  List(TagProof.AnnotationProof(symbol))))
+      case "zio/shield/annotation/package.impure#" =>
+        Some(
+          TagProp(Tag.Pure,
+                  cond = false,
+                  List(TagProof.AnnotationProof(symbol))))
+      case "zio/shield/annotation/package.total#" =>
+        Some(
+          TagProp(Tag.Total,
+                  cond = true,
+                  List(TagProof.AnnotationProof(symbol))))
+      case "zio/shield/annotation/package.partial#" =>
+        Some(
+          TagProp(Tag.Total,
+                  cond = false,
+                  List(TagProof.AnnotationProof(symbol))))
+      case _ => None
     }
 }

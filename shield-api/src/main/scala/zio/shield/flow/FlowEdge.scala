@@ -34,6 +34,7 @@ object FunctionEdge {
           if (symbol.isGlobal) {
             innerSymbols += symbol.value
           }
+          super.apply(tree)
       }
     }.apply(d.body)
 

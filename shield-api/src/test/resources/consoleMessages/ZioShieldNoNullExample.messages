@@ -1,7 +1,0 @@
-ZioShieldNoNullExample.scala:8:3: error: null is forbidden
-  null
-  ^^^^
----
-ZioShieldNoNullExample.scala:9:17: error: nullable method
-  new File(".").getParent
-                ^^^^^^^^^

@@ -9,33 +9,32 @@ import scalafix.internal.scaluzzi.DisableLegacy
 import scalafix.internal.v1.Rules
 import scalafix.lint.RuleDiagnostic
 import scalafix.shield.ZioShieldExtension
-import scalafix.v1.{Configuration, SyntacticDocument}
-import zio.shield.flow.{FlowCache, FlowCacheTagCheckerImpl}
-import zio.shield.rules.{ZioShieldRule, ZioShieldRules}
+import scalafix.v1._
+import zio.shield.flow._
 import zio.shield.tag.TagChecker
 
 import scala.io.Source
 
 class ZioShield private (val semanticDbTargetRoot: Option[String],
                          val fullClasspath: List[Path]) {
-  def apply(syntacticRules: ZioShieldRules,
-            semanticRules: ZioShieldRules): ConfiguredZioShield =
-    new ConfiguredZioShield(this, syntacticRules, semanticRules)
 
-  def apply(syntacticRules: List[ZioShieldRule],
-            semanticRules: List[ZioShieldRule]): ConfiguredZioShield =
-    new ConfiguredZioShield(this,
-                            ZioShieldRules(syntacticRules),
-                            ZioShieldRules(semanticRules))
+  private[shield] val flowCache = FlowCache.empty
+
+  val tagChecker: TagChecker = new FlowCacheTagCheckerImpl(flowCache)
+
+  def apply(syntacticRules: List[Rule] = List.empty,
+            semanticRules: List[Rule] = List.empty,
+            semanticZioShieldRules: List[TagChecker => Rule] = List.empty)
+    : ConfiguredZioShield =
+    new ConfiguredZioShield(
+      this,
+      Rules(syntacticRules),
+      Rules(semanticRules ++ semanticZioShieldRules.map(_(tagChecker))))
 }
 
 class ConfiguredZioShield(zioShieldConfig: ZioShield,
-                          syntacticRules: ZioShieldRules,
-                          semanticRules: ZioShieldRules) {
-
-  private val flowCache = FlowCache.empty
-
-  val tagChecker: TagChecker = new FlowCacheTagCheckerImpl(flowCache)
+                          syntacticRules: Rules,
+                          semanticRules: Rules) {
 
   def run(file: Path): List[ZioShieldDiagnostic] = run(List(file))
 
@@ -58,7 +57,7 @@ class ConfiguredZioShield(zioShieldConfig: ZioShield,
         )
       }
       val errors = docsOrErrors.collect {
-        case (path, Left(err)) => ZioShieldDiagnostic.SemanticFailure(f, err)
+        case (path, Left(err)) => ZioShieldDiagnostic.SemanticFailure(path, err)
       }
       val docs = docsOrErrors.collect {
         case (path, Right(doc)) => path -> doc
@@ -67,7 +66,8 @@ class ConfiguredZioShield(zioShieldConfig: ZioShield,
       (errors, docs.toMap)
     }
 
-    flowCache.build(semDocs)
+    zioShieldConfig.flowCache.build(semDocs)
+    zioShieldConfig.flowCache.infer(List(NullableInferrer))
 
     def lint(path: Path, msg: RuleDiagnostic): ZioShieldDiagnostic =
       ZioShieldDiagnostic.Lint(path, msg.position, msg.message)
