@@ -6,7 +6,7 @@ import zio.shield.tag._
 
 import scala.collection.mutable
 
-case object NullableInferrer extends FlowInferrer[Tag.Nullable.type] {
+case object NullabilityInferrer extends FlowInferrer[Tag.Nullable.type] {
 
   val constNullableSymbols = List(
     "java/io/File.getParent"
@@ -14,7 +14,7 @@ case object NullableInferrer extends FlowInferrer[Tag.Nullable.type] {
 
   def infer(flowCache: FlowCache)(
       symbol: String): TagProp[Tag.Nullable.type] = {
-    if (NullableInferrer.constNullableSymbols.contains(symbol)) {
+    if (NullabilityInferrer.constNullableSymbols.contains(symbol)) {
       TagProp(Tag.Nullable, cond = true, List(TagProof.GivenProof))
     } else {
 
@@ -22,7 +22,7 @@ case object NullableInferrer extends FlowInferrer[Tag.Nullable.type] {
         case Some(tree) =>
           tree.collect {
             case l: Lit.Null =>
-              Patch.lint(Diagnostic("", "null is forbidden", l.pos))
+              Patch.lint(Diagnostic("", "nullable: null usage", l.pos))
           }.asPatch
         case None => Patch.empty
       }

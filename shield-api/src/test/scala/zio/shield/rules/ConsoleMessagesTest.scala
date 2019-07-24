@@ -101,11 +101,8 @@ object ConsoleMessagesTest extends TestSuite {
     test("ZioShieldNoSideEffects") {
       consoleMessageTest(ZioShieldNoSideEffects, autoSrcPath)
     }
-    test("ZioShieldNoThrowCatch") {
-      consoleMessageTest(ZioShieldNoThrowCatch, autoSrcPath)
-    }
-    test("ZioShieldNoPartialFunctions") {
-      consoleMessageTest(ZioShieldNoPartialFunctions, autoSrcPath)
+    test("noPartial") {
+      consoleMessageTest(tc => new ZioShieldNoPartial(tc), autoDirPath)
     }
     test("noNull") {
       consoleMessageTest(tc => new ZioShieldNoNull(tc), autoDirPath)
