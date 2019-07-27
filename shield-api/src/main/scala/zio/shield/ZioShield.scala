@@ -67,7 +67,7 @@ class ConfiguredZioShield(zioShieldConfig: ZioShield,
     }
 
     zioShieldConfig.flowCache.build(semDocs)
-    zioShieldConfig.flowCache.infer(List(NullabilityInferrer, PartialityInferrer))
+    zioShieldConfig.flowCache.infer(List(NullabilityInferrer, PartialityInferrer, ImpurityInferrer))
 
     def lint(path: Path, msg: RuleDiagnostic): ZioShieldDiagnostic =
       ZioShieldDiagnostic.Lint(path, msg.position, msg.message)

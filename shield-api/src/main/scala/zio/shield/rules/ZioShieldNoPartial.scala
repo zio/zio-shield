@@ -12,7 +12,7 @@ class ZioShieldNoPartial(tagChecker: TagChecker)
 
     val pf: PartialFunction[Tree, Patch] =
       ZioBlockDetector.lintFunction(s =>
-        !tagChecker.check(s.value, Tag.Total).getOrElse(true)) {
+        tagChecker.check(s.value, Tag.Partial).getOrElse(false)) {
         case _ => "possible partial symbol" // TODO print proof
       } orElse {
         case l: Term.Throw =>

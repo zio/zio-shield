@@ -12,9 +12,9 @@ object Tag {
   case object BusinessLogic extends Tag
 
   // See https://github.com/vovapolu/zio-shield/issues/7#issuecomment-508237712
-  case object Pure extends Tag
+  case object Impure extends Tag
 
-  case object Total extends Tag
+  case object Partial extends Tag
 
   case object Nullable extends Tag
 }

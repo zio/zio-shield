@@ -63,23 +63,23 @@ object TagProp {
                   List(TagProof.AnnotationProof(symbol))))
       case "zio/shield/annotation/package.pure#" =>
         Some(
-          TagProp(Tag.Pure,
-                  cond = true,
+          TagProp(Tag.Impure,
+                  cond = false,
                   List(TagProof.AnnotationProof(symbol))))
       case "zio/shield/annotation/package.impure#" =>
         Some(
-          TagProp(Tag.Pure,
-                  cond = false,
+          TagProp(Tag.Impure,
+                  cond = true,
                   List(TagProof.AnnotationProof(symbol))))
       case "zio/shield/annotation/package.total#" =>
         Some(
-          TagProp(Tag.Total,
-                  cond = true,
+          TagProp(Tag.Partial,
+                  cond = false,
                   List(TagProof.AnnotationProof(symbol))))
       case "zio/shield/annotation/package.partial#" =>
         Some(
-          TagProp(Tag.Total,
-                  cond = false,
+          TagProp(Tag.Partial,
+                  cond = true,
                   List(TagProof.AnnotationProof(symbol))))
       case _ => None
     }

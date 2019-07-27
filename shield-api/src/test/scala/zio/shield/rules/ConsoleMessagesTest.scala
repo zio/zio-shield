@@ -98,8 +98,8 @@ object ConsoleMessagesTest extends TestSuite {
     test("ZioShieldNoIgnoredExpressions") {
       consoleMessageTest(ZioShieldNoIgnoredExpressions, autoSrcPath)
     }
-    test("ZioShieldNoSideEffects") {
-      consoleMessageTest(ZioShieldNoSideEffects, autoSrcPath)
+    test("noImpurity") {
+      consoleMessageTest(tc => new ZioShieldNoImpurity(tc), autoDirPath)
     }
     test("noPartial") {
       consoleMessageTest(tc => new ZioShieldNoPartial(tc), autoDirPath)

@@ -12,10 +12,10 @@ class ZioShieldNoNull(tagChecker: TagChecker)
     val pf: PartialFunction[Tree, Patch] =
       ZioBlockDetector.lintFunction(s =>
         tagChecker.check(s.value, Tag.Nullable).getOrElse(false)) {
-        case _ => "possible nullable" // TODO print proof
+        case _ => "possibly nullable" // TODO print proof
       } orElse {
         case l: Lit.Null =>
-          Patch.lint(Diagnostic("", "nullable: null is forbidden", l.pos))
+          Patch.lint(Diagnostic("", "nullable: null usage", l.pos))
       }
 
     ZioBlockDetector.fromSingleLintPerTree(pf).traverse(doc.tree)

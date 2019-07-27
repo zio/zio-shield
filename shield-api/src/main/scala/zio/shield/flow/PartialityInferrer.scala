@@ -6,7 +6,7 @@ import zio.shield.tag._
 import scala.collection.mutable
 import scala.meta._
 
-case object PartialityInferrer extends FlowInferrer[Tag.Total.type] {
+case object PartialityInferrer extends FlowInferrer[Tag.Partial.type] {
 
   val constPartialSymbols = List(
     "scala/util/Either.LeftProjection#get().",
@@ -17,9 +17,9 @@ case object PartialityInferrer extends FlowInferrer[Tag.Total.type] {
     "scala/collection/IterableLike#head()."
   ) // TODO possible can be constructed via Java reflection or bytecode analysis
 
-  def infer(flowCache: FlowCache)(symbol: String): TagProp[Tag.Total.type] = {
+  def infer(flowCache: FlowCache)(symbol: String): TagProp[Tag.Partial.type] = {
     if (PartialityInferrer.constPartialSymbols.contains(symbol)) {
-      TagProp(Tag.Total, cond = false, List(TagProof.GivenProof))
+      TagProp(Tag.Partial, cond = true, List(TagProof.GivenProof))
     } else {
 
       val constPatch = flowCache.trees.get(symbol) match {
@@ -40,14 +40,14 @@ case object PartialityInferrer extends FlowInferrer[Tag.Total.type] {
             : Option[Boolean] =
             tags
               .getOrElse(s, mutable.Buffer.empty)
-              .find(p => p.tag == Tag.Total && p.isProved)
+              .find(p => p.tag == Tag.Partial && p.isProved)
               .map(_.cond)
 
           lazy val userProp = findProp(flowCache.userTags)
 
           lazy val inferredProp = findProp(flowCache.inferredTags)
 
-          !userProp.orElse(inferredProp).getOrElse(true)
+          userProp.orElse(inferredProp).getOrElse(false)
         }
 
       val partialSymbols = flowCache.symbols.get(symbol) match {
@@ -63,8 +63,8 @@ case object PartialityInferrer extends FlowInferrer[Tag.Total.type] {
         TagProof.SymbolsProof.fromSymbols(partialSymbols)
       ).flatten
 
-      if (proofs.nonEmpty) TagProp(Tag.Total, cond = false, proofs)
-      else TagProp(Tag.Total, cond = true, List(TagProof.ContraryProof))
+      if (proofs.nonEmpty) TagProp(Tag.Partial, cond = true, proofs)
+      else TagProp(Tag.Partial, cond = false, List(TagProof.ContraryProof))
     }
   }
 }
