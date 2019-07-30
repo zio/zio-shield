@@ -4,8 +4,6 @@ import scalafix.v1._
 import scala.meta._
 import zio.shield.tag._
 
-import scala.collection.mutable
-
 case object NullabilityInferrer extends FlowInferrer[Tag.Nullable.type] {
 
   val constNullableSymbols = List(
@@ -17,7 +15,6 @@ case object NullabilityInferrer extends FlowInferrer[Tag.Nullable.type] {
     if (NullabilityInferrer.constNullableSymbols.contains(symbol)) {
       TagProp(Tag.Nullable, cond = true, List(TagProof.GivenProof))
     } else {
-
       val constPatch = flowCache.trees.get(symbol) match {
         case Some(tree) =>
           tree.collect {
@@ -27,27 +24,13 @@ case object NullabilityInferrer extends FlowInferrer[Tag.Nullable.type] {
         case None => Patch.empty
       }
 
-      def primitiveNullableSearch(symbols: List[String]): List[String] =
-        symbols.filter { s =>
-          def findProp(tags: mutable.Map[String, mutable.Buffer[TagProp[_]]])
-            : Option[Boolean] =
-            tags
-              .getOrElse(s, mutable.Buffer.empty)
-              .find(p => p.tag == Tag.Nullable && p.isProved)
-              .map(_.cond)
-
-          lazy val userProp = findProp(flowCache.userTags)
-
-          lazy val inferredProp = findProp(flowCache.inferredTags)
-
-          userProp.orElse(inferredProp).getOrElse(false)
-        }
-
-      val nullableSymbols = flowCache.symbols.get(symbol) match {
+      val nullableSymbols = flowCache.edges.get(symbol) match {
         case Some(FunctionEdge(_, _, innerSymbols)) =>
-          primitiveNullableSearch(innerSymbols)
+          innerSymbols.filter(
+            flowCache.searchTag(Tag.Nullable)(_).getOrElse(false))
         case Some(ValVarEdge(innerSymbols)) =>
-          primitiveNullableSearch(innerSymbols)
+          innerSymbols.filter(
+            flowCache.searchTag(Tag.Nullable)(_).getOrElse(false))
         case _ => List.empty
       }
 

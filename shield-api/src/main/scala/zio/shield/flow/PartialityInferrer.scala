@@ -3,7 +3,6 @@ package zio.shield.flow
 import scalafix.v1._
 import zio.shield.tag._
 
-import scala.collection.mutable
 import scala.meta._
 
 case object PartialityInferrer extends FlowInferrer[Tag.Partial.type] {
@@ -34,27 +33,13 @@ case object PartialityInferrer extends FlowInferrer[Tag.Partial.type] {
         case None => Patch.empty
       }
 
-      def primitivePartialSearch(symbols: List[String]): List[String] =
-        symbols.filter { s =>
-          def findProp(tags: mutable.Map[String, mutable.Buffer[TagProp[_]]])
-            : Option[Boolean] =
-            tags
-              .getOrElse(s, mutable.Buffer.empty)
-              .find(p => p.tag == Tag.Partial && p.isProved)
-              .map(_.cond)
-
-          lazy val userProp = findProp(flowCache.userTags)
-
-          lazy val inferredProp = findProp(flowCache.inferredTags)
-
-          userProp.orElse(inferredProp).getOrElse(false)
-        }
-
-      val partialSymbols = flowCache.symbols.get(symbol) match {
+      val partialSymbols = flowCache.edges.get(symbol) match {
         case Some(FunctionEdge(_, _, innerSymbols)) =>
-          primitivePartialSearch(innerSymbols)
+          innerSymbols.filter(
+            flowCache.searchTag(Tag.Partial)(_).getOrElse(false))
         case Some(ValVarEdge(innerSymbols)) =>
-          primitivePartialSearch(innerSymbols)
+          innerSymbols.filter(
+            flowCache.searchTag(Tag.Partial)(_).getOrElse(false))
         case _ => List.empty
       }
 

@@ -55,6 +55,14 @@ object ZioBlockDetector {
   val safeBlocksMatcher: SymbolMatcher =
     SymbolMatcher.normalized(safeBlocks: _*)
 
+  val safeBlockDetector: Tree => Boolean = {
+    case Term.Apply(Term.Select(safeBlocksMatcher(block), Term.Name("apply")),
+                    _) =>
+      true
+    case Term.Apply(safeBlocksMatcher(block), _) => true
+    case _                                       => false
+  }
+
   def lintFunction(matcher: Symbol => Boolean)(
       lintMessage: PartialFunction[Symbol, String])(
       implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {

@@ -3,7 +3,6 @@ package zio.shield.flow
 import scalafix.v1._
 import zio.shield.tag._
 
-import scala.collection.mutable
 import scala.meta._
 
 case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
@@ -13,7 +12,8 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
     "scala/Predef.println()."
   ) // TODO possible can be constructed via Java reflection or bytecode analysis
 
-  def constImpurityChecker(implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
+  def constImpurityChecker(
+      implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
     def skipTermSelect(term: Term): Boolean = term match {
       case _: Term.Name      => true
       case Term.Select(q, _) => skipTermSelect(q)
@@ -58,27 +58,13 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
         case None => Patch.empty
       }
 
-      def primitiveImpureSearch(symbols: List[String]): List[String] =
-        symbols.filter { s =>
-          def findProp(tags: mutable.Map[String, mutable.Buffer[TagProp[_]]])
-            : Option[Boolean] =
-            tags
-              .getOrElse(s, mutable.Buffer.empty)
-              .find(p => p.tag == Tag.Impure && p.isProved)
-              .map(_.cond)
-
-          lazy val userProp = findProp(flowCache.userTags)
-
-          lazy val inferredProp = findProp(flowCache.inferredTags)
-
-          userProp.orElse(inferredProp).getOrElse(false)
-        }
-
-      val impureSymbols = flowCache.symbols.get(symbol) match {
+      val impureSymbols = flowCache.edges.get(symbol) match {
         case Some(FunctionEdge(_, _, innerSymbols)) =>
-          primitiveImpureSearch(innerSymbols)
+          innerSymbols.filter(
+            flowCache.searchTag(Tag.Impure)(_).getOrElse(false))
         case Some(ValVarEdge(innerSymbols)) =>
-          primitiveImpureSearch(innerSymbols)
+          innerSymbols.filter(
+            flowCache.searchTag(Tag.Impure)(_).getOrElse(false))
         case _ => List.empty
       }
 

@@ -2,9 +2,6 @@ package zio.shield.tag
 
 import scalafix.patch.Patch
 
-import scala.annotation.StaticAnnotation
-import zio.shield.annotation
-
 sealed trait TagProof {
   def isEmpty: Boolean
   def nonEmpty: Boolean = !isEmpty

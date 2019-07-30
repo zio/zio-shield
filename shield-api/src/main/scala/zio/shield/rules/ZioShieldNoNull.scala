@@ -1,17 +1,19 @@
 package zio.shield.rules
 
-import scala.meta._
 import scalafix.v1._
-import zio.shield.tag.{Tag, TagChecker}
+import zio.shield.flow.FlowCache
+import zio.shield.tag.Tag
 
-class ZioShieldNoNull(tagChecker: TagChecker)
+import scala.meta._
+
+class ZioShieldNoNull(cache: FlowCache)
     extends SemanticRule("ZioShieldNoNull") {
 
   override def fix(implicit doc: SemanticDocument): Patch = {
 
     val pf: PartialFunction[Tree, Patch] =
       ZioBlockDetector.lintFunction(s =>
-        tagChecker.check(s.value, Tag.Nullable).getOrElse(false)) {
+        cache.searchTag(Tag.Nullable)(s.value).getOrElse(false)) {
         case _ => "possibly nullable" // TODO print proof
       } orElse {
         case l: Lit.Null =>

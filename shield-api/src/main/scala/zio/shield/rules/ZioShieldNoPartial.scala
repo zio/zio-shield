@@ -1,18 +1,19 @@
 package zio.shield.rules
 
 import scalafix.v1._
-import zio.shield.tag.{Tag, TagChecker}
+import zio.shield.flow.FlowCache
+import zio.shield.tag.Tag
 
 import scala.meta._
 
-class ZioShieldNoPartial(tagChecker: TagChecker)
+class ZioShieldNoPartial(cache: FlowCache)
     extends SemanticRule("ZioShieldNoPartial") {
 
   override def fix(implicit doc: SemanticDocument): Patch = {
 
     val pf: PartialFunction[Tree, Patch] =
       ZioBlockDetector.lintFunction(s =>
-        tagChecker.check(s.value, Tag.Partial).getOrElse(false)) {
+        cache.searchTag(Tag.Partial)(s.value).getOrElse(false)) {
         case _ => "possible partial symbol" // TODO print proof
       } orElse {
         case l: Term.Throw =>

@@ -4,8 +4,8 @@ import java.nio.file.{Files, Path, Paths}
 
 import scalafix.v1.Rule
 import utest._
+import zio.shield.flow.FlowCache
 import zio.shield.{ConfiguredZioShield, ZioShield}
-import zio.shield.tag.TagChecker
 
 import scala.io.Source
 
@@ -27,7 +27,7 @@ object ConsoleMessagesTest extends TestSuite {
 
   val verbose = true
 
-  def consoleMessageTest(zioShieldRule: TagChecker => Rule,
+  def consoleMessageTest(zioShieldRule: FlowCache => Rule,
                          path: Path): Unit = {
     val instance = ZioShield(None, fullClasspath).apply(
       semanticZioShieldRules = List(zioShieldRule))
@@ -99,13 +99,13 @@ object ConsoleMessagesTest extends TestSuite {
       consoleMessageTest(ZioShieldNoIgnoredExpressions, autoSrcPath)
     }
     test("noImpurity") {
-      consoleMessageTest(tc => new ZioShieldNoImpurity(tc), autoDirPath)
+      consoleMessageTest(fc => new ZioShieldNoImpurity(fc), autoDirPath)
     }
     test("noPartial") {
-      consoleMessageTest(tc => new ZioShieldNoPartial(tc), autoDirPath)
+      consoleMessageTest(fc => new ZioShieldNoPartial(fc), autoDirPath)
     }
     test("noNull") {
-      consoleMessageTest(tc => new ZioShieldNoNull(tc), autoDirPath)
+      consoleMessageTest(fc => new ZioShieldNoNull(fc), autoDirPath)
     }
     test("ZioShieldNoTypeCasting") {
       consoleMessageTest(ZioShieldNoTypeCasting, autoSrcPath)

@@ -13,17 +13,31 @@ final case class FunctionEdge(argsTypes: List[String],
     extends FlowEdge
 
 object FunctionEdge {
-  def fromDefn(d: Defn.Def)(implicit semDoc: SemanticDocument): FunctionEdge = {
+  private def fromParamsName(paramss: List[List[Term.Param]], name: Term.Name)(
+      implicit doc: SemanticDocument): (List[String], Option[String]) = {
     val argsTypes =
-      d.paramss.flatten
+      paramss.flatten
         .flatMap(_.decltpe)
         .map(_.symbol)
         .filter(_.isGlobal)
         .map(_.value)
-    val returnType = d.name.symbol.info.flatMap(_.signature match {
+    val returnType = name.symbol.info.flatMap(_.signature match {
       case MethodSignature(_, _, TypeRef(_, s: Symbol, _)) => Some(s.value)
       case _                                               => None
     })
+
+    (argsTypes, returnType)
+  }
+
+  def fromDecl(d: Decl.Def)(implicit semDoc: SemanticDocument): FunctionEdge = {
+    val (argsTypes, returnType) = fromParamsName(d.paramss, d.name)
+
+    FunctionEdge(argsTypes, returnType, List.empty)
+  }
+
+  def fromDefn(d: Defn.Def)(implicit semDoc: SemanticDocument): FunctionEdge = {
+
+    val (argsTypes, returnType) = fromParamsName(d.paramss, d.name)
 
     val innerSymbols = mutable.HashSet[String]()
 
@@ -53,7 +67,7 @@ object ClassTraitEdge {
     val ctorArgsTypes =
       ctor.paramss.flatten
         .flatMap(_.decltpe)
-        .map(_.symbol)
+        .map(_.symbol) // TOOD we need more detailed analysis
         .filter(_.isGlobal)
         .map(_.value)
     val (parentTypes, innerDefns) = name.symbol.info
@@ -101,6 +115,8 @@ object ObjectEdge {
 final case class ValVarEdge(innerSymbols: List[String]) extends FlowEdge
 
 object ValVarEdge {
+  val empty = ValVarEdge(List.empty)
+
   private def fromBody(body: Term)(
       implicit semDoc: SemanticDocument): ValVarEdge = {
     val innerSymbols = mutable.HashSet[String]()

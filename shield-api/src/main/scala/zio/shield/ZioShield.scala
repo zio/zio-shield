@@ -11,25 +11,22 @@ import scalafix.lint.RuleDiagnostic
 import scalafix.shield.ZioShieldExtension
 import scalafix.v1._
 import zio.shield.flow._
-import zio.shield.tag.TagChecker
 
 import scala.io.Source
 
 class ZioShield private (val semanticDbTargetRoot: Option[String],
                          val fullClasspath: List[Path]) {
 
-  private[shield] val flowCache = FlowCache.empty
-
-  val tagChecker: TagChecker = new FlowCacheTagCheckerImpl(flowCache)
+  val flowCache: FlowCache = FlowCache.empty
 
   def apply(syntacticRules: List[Rule] = List.empty,
             semanticRules: List[Rule] = List.empty,
-            semanticZioShieldRules: List[TagChecker => Rule] = List.empty)
+            semanticZioShieldRules: List[FlowCache => Rule] = List.empty)
     : ConfiguredZioShield =
     new ConfiguredZioShield(
       this,
       Rules(syntacticRules),
-      Rules(semanticRules ++ semanticZioShieldRules.map(_(tagChecker))))
+      Rules(semanticRules ++ semanticZioShieldRules.map(_(flowCache))))
 }
 
 class ConfiguredZioShield(zioShieldConfig: ZioShield,
