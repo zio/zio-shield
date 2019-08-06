@@ -107,6 +107,9 @@ object ConsoleMessagesTest extends TestSuite {
     test("noNull") {
       consoleMessageTest(fc => new ZioShieldNoNull(fc), autoDirPath)
     }
+    test("noIndirectUse") {
+      consoleMessageTest(fc => new ZioShieldNoIndirectUse(fc), autoDirPath)
+    }
     test("ZioShieldNoTypeCasting") {
       consoleMessageTest(ZioShieldNoTypeCasting, autoSrcPath)
     }

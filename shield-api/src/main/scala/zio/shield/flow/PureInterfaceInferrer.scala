@@ -4,7 +4,9 @@ import scalafix.v1._
 import zio.shield.rules.ZioBlockDetector
 import zio.shield.tag.{Tag, TagProof, TagProp}
 
-object PureInterfaceInferrer {
+import scala.meta._
+
+case object PureInterfaceInferrer extends FlowInferrer[Tag.PureInterface.type] {
 
   def infer(flowCache: FlowCache)(
       symbol: String): TagProp[Tag.PureInterface.type] = {
@@ -17,11 +19,11 @@ object PureInterfaceInferrer {
       case _ => List.empty
     }
 
-    val effectfulCtorArgs = maybeEdge match {
-      case Some(ClassTraitEdge(ctorArgsTypes, _, _)) =>
-        ctorArgsTypes.filterNot(
-          flowCache.searchTag(Tag.PureInterface)(_).getOrElse(true))
-      case _ => List.empty
+    val traitPatch = flowCache.trees.get(symbol) match {
+      case Some(t: Defn.Trait) => Patch.empty
+      case Some(t) =>
+        Patch.lint(Diagnostic("", "not a pure interface: not a trait", t.pos))
+      case None => Patch.empty
     }
 
     val constPatch = maybeEdge match {
@@ -34,7 +36,7 @@ object PureInterfaceInferrer {
                 doc <- flowCache.docs.get(path)
                 tree <- flowCache.trees.get(d)
                 patch = tree.collect {
-                  case t if ZioBlockDetector.safeBlockDetector(t) =>
+                  case t if ZioBlockDetector.safeBlockDetector(t)(doc) =>
                     Patch.lint(
                       Diagnostic("", "effectful: ZIO effects usage", t.pos))
                 }.asPatch
@@ -47,11 +49,21 @@ object PureInterfaceInferrer {
 
     val proofs = List(
       TagProof.SymbolsProof.fromSymbols(effectfulParents),
-      TagProof.SymbolsProof.fromSymbols(effectfulCtorArgs),
+      TagProof.PatchProof.fromPatch(traitPatch),
       TagProof.PatchProof.fromPatch(constPatch)
     ).flatten
 
     if (proofs.nonEmpty) TagProp(Tag.PureInterface, cond = false, proofs)
     else TagProp(Tag.PureInterface, cond = true, List(TagProof.ContraryProof))
+  }
+
+  def dependentSymbols(edge: FlowEdge): List[String] = edge match {
+    case ClassTraitEdge(_, parentsTypes, _) => parentsTypes
+    case _                                  => List.empty
+  }
+
+  def isInferable(symbol: String, edge: FlowEdge): Boolean = edge match {
+    case ClassTraitEdge(_, _, _) => true
+    case _                       => false
   }
 }

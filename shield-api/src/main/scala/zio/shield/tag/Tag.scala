@@ -7,9 +7,9 @@ object Tag {
   // See https://github.com/vovapolu/zio-shield/issues/5#issuecomment-506896092
   case object PureInterface extends Tag
 
-  case object Implementation extends Tag
+  case object Implementaion extends Tag
 
-  case object BusinessLogic extends Tag
+  case object Effectful extends Tag
 
   // See https://github.com/vovapolu/zio-shield/issues/7#issuecomment-508237712
   case object Impure extends Tag

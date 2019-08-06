@@ -52,4 +52,16 @@ case object PartialityInferrer extends FlowInferrer[Tag.Partial.type] {
       else TagProp(Tag.Partial, cond = false, List(TagProof.ContraryProof))
     }
   }
+
+  def dependentSymbols(edge: FlowEdge): List[String] = edge match {
+    case FunctionEdge(_, _, innerSymbols) => innerSymbols
+    case ValVarEdge(innerSymbols)         => innerSymbols
+    case _                                => List.empty
+  }
+
+  def isInferable(symbol: String, edge: FlowEdge): Boolean = edge match {
+    case FunctionEdge(_, _, _) => true
+    case ValVarEdge(_)         => true
+    case _                     => false
+  }
 }

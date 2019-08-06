@@ -5,6 +5,7 @@ import java.nio.file.Path
 import scala.meta._
 import scalafix.v1._
 import zio.shield.tag._
+import zio.shield.utils
 
 import scala.collection.mutable
 
@@ -40,7 +41,7 @@ final case class FlowCacheImpl(
       : Option[Boolean] =
       tags
         .getOrElse(symbol, mutable.Buffer.empty)
-        .find(p => p.tag == Tag.Nullable && p.isProved)
+        .find(p => p.tag == tag && p.isProved)
         .map(_.cond)
 
     lazy val userProp = findProp(userTags)
@@ -63,6 +64,8 @@ final case class FlowCacheImpl(
 
     semDocs.foreach {
       case (file, semDoc) =>
+        implicit val doc: SemanticDocument = semDoc
+
         def updateForSymbol(symbol: Symbol,
                             tree: Tree,
                             edge: FlowEdge): Unit = {
@@ -84,61 +87,39 @@ final case class FlowCacheImpl(
           }
         }
 
-        def selectSymbolsFromPat(p: Pat): List[Symbol] = p match {
-          case Pat.Var(name) => List(name.symbol(semDoc))
-          case Pat.Bind(lhs, rhs) =>
-            selectSymbolsFromPat(lhs) ++ selectSymbolsFromPat(rhs)
-          case Pat.Tuple(args)      => args.flatMap(selectSymbolsFromPat)
-          case Pat.Extract(_, args) => args.flatMap(selectSymbolsFromPat)
-          case Pat.ExtractInfix(lhs, _, rhs) =>
-            selectSymbolsFromPat(lhs) ++ rhs.flatMap(selectSymbolsFromPat)
-          case Pat.Typed(lhs, _) => selectSymbolsFromPat(lhs)
-          case _                 => List.empty
-        }
-
         val traverser = new Traverser {
           override def apply(tree: Tree): Unit = tree match {
             case d: Defn.Def =>
-              updateForSymbol(d.name.symbol(semDoc),
-                              d,
-                              FunctionEdge.fromDefn(d)(semDoc))
+              updateForSymbol(d.name.symbol, d, FunctionEdge.fromDefn(d))
               super.apply(tree)
             case d: Decl.Def =>
-              updateForSymbol(d.name.symbol(semDoc),
-                              d,
-                              FunctionEdge.fromDecl(d)(semDoc))
+              updateForSymbol(d.name.symbol, d, FunctionEdge.fromDecl(d))
             case d: Defn.Class =>
-              updateForSymbol(d.name.symbol(semDoc),
-                              d,
-                              ClassTraitEdge.fromDefn(d)(semDoc))
+              updateForSymbol(d.name.symbol, d, ClassTraitEdge.fromDefn(d))
               super.apply(tree)
             case d: Defn.Trait =>
-              updateForSymbol(d.name.symbol(semDoc),
-                              d,
-                              ClassTraitEdge.fromDefn(d)(semDoc))
+              updateForSymbol(d.name.symbol, d, ClassTraitEdge.fromDefn(d))
               super.apply(tree)
             case d: Defn.Object =>
-              updateForSymbol(d.name.symbol(semDoc),
-                              d,
-                              ObjectEdge.fromDefn(d)(semDoc))
+              updateForSymbol(d.name.symbol, d, ObjectEdge.fromDefn(d))
               super.apply(tree)
             case d: Defn.Val =>
-              d.pats.flatMap(selectSymbolsFromPat).foreach { s =>
-                updateForSymbol(s, d, ValVarEdge.fromDefn(d)(semDoc))
+              d.pats.flatMap(utils.selectNamesFromPat).foreach { name =>
+                updateForSymbol(name.symbol, d, ValVarEdge.fromDefn(d))
               }
               super.apply(tree)
             case d: Defn.Var =>
-              d.pats.flatMap(selectSymbolsFromPat).foreach { s =>
-                updateForSymbol(s, d, ValVarEdge.fromDefn(d)(semDoc))
+              d.pats.flatMap(utils.selectNamesFromPat).foreach { name =>
+                updateForSymbol(name.symbol, d, ValVarEdge.fromDefn(d))
               }
               super.apply(tree)
             case d: Decl.Val =>
-              d.pats.flatMap(selectSymbolsFromPat).foreach { s =>
-                updateForSymbol(s, d, ValVarEdge.empty)
+              d.pats.flatMap(utils.selectNamesFromPat).foreach { name =>
+                updateForSymbol(name.symbol, d, ValVarEdge.empty)
               }
             case d: Decl.Var =>
-              d.pats.flatMap(selectSymbolsFromPat).foreach { s =>
-                updateForSymbol(s, d, ValVarEdge.empty)
+              d.pats.flatMap(utils.selectNamesFromPat).foreach { name =>
+                updateForSymbol(name.symbol, d, ValVarEdge.empty)
               }
             case _ => super.apply(tree)
           }
@@ -155,17 +136,19 @@ final case class FlowCacheImpl(
       if (!processingSymbols.contains(symbol) &&
           (!inferredTags.contains(symbol) || inferredTags(symbol).isEmpty)) {
         processingSymbols += symbol
-        edges.get(symbol).foreach {
-          // TODO mechanism to detect where to go for each inferrer
-          case FunctionEdge(_, _, innerSymbols) =>
-            innerSymbols.foreach(dfs)
-            inferredTags(symbol) =
-              inferrers.map(i => i.infer(this)(symbol)).toBuffer
-          case ValVarEdge(innerSymbols) =>
-            innerSymbols.foreach(dfs)
-            inferredTags(symbol) =
-              inferrers.map(i => i.infer(this)(symbol)).toBuffer
-          case _ =>
+        edges.get(symbol).foreach { e =>
+          inferrers.foreach { i =>
+            if (i.isInferable(symbol, e)) {
+              i.dependentSymbols(e).foreach(dfs)
+            }
+          }
+          if (!inferredTags.contains(symbol))
+            inferredTags(symbol) = mutable.Buffer()
+          inferrers.foreach { i =>
+            if (i.isInferable(symbol, e)) {
+              inferredTags(symbol) += i.infer(this)(symbol)
+            }
+          }
         }
         processingSymbols -= symbol
       }

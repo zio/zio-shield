@@ -1,6 +1,7 @@
 package zio.shield.flow
 
 import scalafix.v1._
+import zio.shield.rules.ZioBlockDetector
 import zio.shield.tag._
 
 import scala.meta._
@@ -14,11 +15,6 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
 
   def constImpurityChecker(
       implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
-    def skipTermSelect(term: Term): Boolean = term match {
-      case _: Term.Name      => true
-      case Term.Select(q, _) => skipTermSelect(q)
-      case _                 => false
-    }
 
     def isUnitMethod(s: Symbol): Boolean = {
       s.info.map(_.signature) match {
@@ -29,15 +25,8 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
       }
     }
 
-    {
-      case Term.Select(q, name)
-          if skipTermSelect(q) && isUnitMethod(name.symbol) =>
-        Patch.lint(Diagnostic("", "impure: calling unit method", name.pos))
-      case Type.Select(q, name)
-          if skipTermSelect(q) && isUnitMethod(name.symbol) =>
-        Patch.lint(Diagnostic("", "impure: calling unit method", name.pos))
-      case t: Term.Name if isUnitMethod(t.symbol) =>
-        Patch.lint(Diagnostic("", "impure: calling unit method", t.pos))
+    ZioBlockDetector.lintFunction(isUnitMethod) {
+      case _ => "impure: calling unit method"
     }
   }
 
@@ -75,6 +64,20 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
 
       if (proofs.nonEmpty) TagProp(Tag.Impure, cond = true, proofs)
       else TagProp(Tag.Impure, cond = false, List(TagProof.ContraryProof))
+    }
+  }
+
+  def dependentSymbols(edge: FlowEdge): List[String] = edge match {
+    case FunctionEdge(_, _, innerSymbols) => innerSymbols
+    case ValVarEdge(innerSymbols)         => innerSymbols
+    case _                                => List.empty
+  }
+
+  def isInferable(symbol: String, edge: FlowEdge): Boolean = {
+    edge match {
+      case FunctionEdge(_, _, _) => true
+      case ValVarEdge(_)         => true
+      case _                     => false
     }
   }
 }
