@@ -30,6 +30,8 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
     }
   }
 
+  val name: String = toString
+
   def infer(flowCache: FlowCache)(symbol: String): TagProp[Tag.Impure.type] = {
     if (ImpurityInferrer.constImpureSymbols.contains(symbol)) {
       TagProp(Tag.Impure, cond = true, List(TagProof.GivenProof))

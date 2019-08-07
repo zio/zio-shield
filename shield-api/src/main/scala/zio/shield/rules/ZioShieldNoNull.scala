@@ -1,13 +1,14 @@
 package zio.shield.rules
 
 import scalafix.v1._
-import zio.shield.flow.FlowCache
+import zio.shield.flow.{FlowCache, FlowInferrer, NullabilityInferrer}
 import zio.shield.tag.Tag
 
 import scala.meta._
 
 class ZioShieldNoNull(cache: FlowCache)
-    extends SemanticRule("ZioShieldNoNull") {
+    extends SemanticRule("ZioShieldNoNull")
+    with FlowInferenceDependent {
 
   override def fix(implicit doc: SemanticDocument): Patch = {
 
@@ -22,4 +23,6 @@ class ZioShieldNoNull(cache: FlowCache)
 
     ZioBlockDetector.fromSingleLintPerTree(pf).traverse(doc.tree)
   }
+
+  def dependsOn: List[FlowInferrer[_]] = List(NullabilityInferrer)
 }

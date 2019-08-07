@@ -1,13 +1,13 @@
 package zio.shield.rules
 
 import scalafix.v1._
-import zio.shield.flow.FlowCache
+import zio.shield.flow.{FlowCache, FlowInferrer, PartialityInferrer}
 import zio.shield.tag.Tag
 
 import scala.meta._
 
 class ZioShieldNoPartial(cache: FlowCache)
-    extends SemanticRule("ZioShieldNoPartial") {
+    extends SemanticRule("ZioShieldNoPartial") with FlowInferenceDependent {
 
   override def fix(implicit doc: SemanticDocument): Patch = {
 
@@ -24,4 +24,6 @@ class ZioShieldNoPartial(cache: FlowCache)
 
     ZioBlockDetector.fromSingleLintPerTree(pf).traverse(doc.tree)
   }
+
+  def dependsOn: List[FlowInferrer[_]] = List(PartialityInferrer)
 }

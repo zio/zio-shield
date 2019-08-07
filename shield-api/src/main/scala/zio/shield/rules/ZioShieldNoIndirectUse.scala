@@ -4,12 +4,12 @@ import scalafix.internal.scaluzzi.Disable.ContextTraverser
 import scalafix.v1._
 import zio.shield.flow._
 import zio.shield.tag.Tag
-import zio.shield.utils
 
 import scala.meta._
 
 class ZioShieldNoIndirectUse(cache: FlowCache)
-    extends SemanticRule("ZioShieldNoIndirectUse") {
+    extends SemanticRule("ZioShieldNoIndirectUse")
+    with FlowInferenceDependent {
 
   override def fix(implicit doc: SemanticDocument): Patch = {
 
@@ -30,17 +30,6 @@ class ZioShieldNoIndirectUse(cache: FlowCache)
           }
         case _ => List.empty
       }
-
-//    def checkName(name: Term.Name): Patch =
-//      if (cache.searchTag(Tag.Effectful)(name.symbol.value).getOrElse(false)) {
-//        Patch.lint(
-//          Diagnostic(
-//            "",
-//            "effectful: ZIO effects usage outside of pure interface or implementation",
-//            name.pos))
-//      } else {
-//        Patch.empty
-//      }
 
     val noEffectful = ZioBlockDetector.lintFunction { s =>
       cache
@@ -64,4 +53,10 @@ class ZioShieldNoIndirectUse(cache: FlowCache)
         Left(noEffectful(t))
     }).result(doc.tree).asPatch
   }
+
+  def dependsOn: List[FlowInferrer[_]] = List(
+    PureInterfaceInferrer,
+    ImplementationInferrer,
+    EffectfullInferrer
+  )
 }

@@ -1,11 +1,15 @@
 package zio.shield.flow
 
 import scalafix.v1._
+import zio.shield.flow.ImplementationInferrer.toString
 import zio.shield.rules.ZioBlockDetector
 import zio.shield.tag.{Tag, TagProof, TagProp}
+
 import scala.meta._
 
 object EffectfullInferrer extends FlowInferrer[Tag.Effectful.type] {
+
+  val name: String = toString
 
   def infer(flowCache: FlowCache)(
       symbol: String): TagProp[Tag.Effectful.type] = {

@@ -5,6 +5,8 @@ import zio.shield.tag.{Tag, TagProof, TagProp}
 case object ImplementationInferrer
     extends FlowInferrer[Tag.Implementaion.type] {
 
+  val name: String = toString
+
   def infer(flowCache: FlowCache)(
       symbol: String): TagProp[Tag.Implementaion.type] = {
 

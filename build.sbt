@@ -1,7 +1,7 @@
 import Dependencies._
 
 ThisBuild / scalaVersion := "2.12.8"
-ThisBuild / version := "0.3.0-SNAPSHOT"
+ThisBuild / version := "0.4.0-SNAPSHOT"
 ThisBuild / organization := "zio.shield"
 
 lazy val shieldApi = (project in file("shield-api"))

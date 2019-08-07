@@ -27,8 +27,9 @@ object ConsoleMessagesTest extends TestSuite {
 
   val verbose = true
 
-  def consoleMessageTest(zioShieldRule: FlowCache => Rule,
-                         path: Path): Unit = {
+  def consoleMessageTest(
+      zioShieldRule: FlowCache => Rule with FlowInferenceDependent,
+      path: Path): Unit = {
     val instance = ZioShield(None, fullClasspath).apply(
       semanticZioShieldRules = List(zioShieldRule))
     runWithInstance(instance, path)
@@ -53,7 +54,9 @@ object ConsoleMessagesTest extends TestSuite {
          .asScala
          .toList)
     } else if (Files.isRegularFile(path)) {
-      (path.getParent, path.getFileName.toString.stripSuffix(".scala"), List(path))
+      (path.getParent,
+       path.getFileName.toString.stripSuffix(".scala"),
+       List(path))
     } else (Paths.get("/"), "", List.empty)
 
     val consoleMessages =

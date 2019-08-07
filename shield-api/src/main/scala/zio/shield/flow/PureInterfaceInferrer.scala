@@ -8,6 +8,8 @@ import scala.meta._
 
 case object PureInterfaceInferrer extends FlowInferrer[Tag.PureInterface.type] {
 
+  val name: String = toString
+
   def infer(flowCache: FlowCache)(
       symbol: String): TagProp[Tag.PureInterface.type] = {
     val maybeEdge = flowCache.edges.get(symbol)

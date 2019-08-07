@@ -1,6 +1,6 @@
 package example
 
-object ExampleTest {
+object Example {
   def defBodyNullable(foo: String): String = {
     if (foo.length > 1) {
       foo
@@ -9,7 +9,5 @@ object ExampleTest {
     }
   }
 
-  defBodyNullable("foo")
-
-  1.asInstanceOf[Long]
+  val foo = defBodyNullable("foo")
 }

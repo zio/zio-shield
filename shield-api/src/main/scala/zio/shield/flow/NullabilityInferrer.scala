@@ -10,6 +10,8 @@ case object NullabilityInferrer extends FlowInferrer[Tag.Nullable.type] {
     "java/io/File.getParent"
   ) // TODO possible can be constructed via Java reflection or bytecode analysis
 
+  val name: String = toString
+
   def infer(flowCache: FlowCache)(
       symbol: String): TagProp[Tag.Nullable.type] = {
     if (NullabilityInferrer.constNullableSymbols.contains(symbol)) {

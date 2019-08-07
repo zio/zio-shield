@@ -16,6 +16,8 @@ case object PartialityInferrer extends FlowInferrer[Tag.Partial.type] {
     "scala/collection/IterableLike#head()."
   ) // TODO possible can be constructed via Java reflection or bytecode analysis
 
+  val name: String = toString
+
   def infer(flowCache: FlowCache)(symbol: String): TagProp[Tag.Partial.type] = {
     if (PartialityInferrer.constPartialSymbols.contains(symbol)) {
       TagProp(Tag.Partial, cond = true, List(TagProof.GivenProof))
