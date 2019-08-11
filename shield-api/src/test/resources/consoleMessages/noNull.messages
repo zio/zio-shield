@@ -1,3 +1,23 @@
+ZioShieldNoNullExample.scala:8:3: error: nullable: null usage
+  null
+  ^^^^
+---
+ZioShieldNoNullExample.scala:10:27: error: possibly nullable
+  ZioShieldNoNullExample2.annotatedNullable("foo")
+                          ^^^^^^^^^^^^^^^^^
+---
+ZioShieldNoNullExample.scala:11:27: error: possibly nullable
+  ZioShieldNoNullExample2.defBodyNullable("foo")
+                          ^^^^^^^^^^^^^^^
+---
+ZioShieldNoNullExample.scala:14:27: error: possibly nullable
+  ZioShieldNoNullExample2.valBodyNullable
+                          ^^^^^^^^^^^^^^^
+---
+ZioShieldNoNullExample.scala:15:27: error: possibly nullable
+  ZioShieldNoNullExample2.usingNullable("foo")
+                          ^^^^^^^^^^^^^
+---
 ZioShieldNoNullExample2.scala:8:7: error: possibly nullable
   def annotatedNullable(foo: String): String = null
       ^^^^^^^^^^^^^^^^^
@@ -33,23 +53,3 @@ ZioShieldNoNullExample2.scala:25:7: error: possibly nullable
 ZioShieldNoNullExample2.scala:29:7: error: possibly nullable
       defBodyNullable(foo)
       ^^^^^^^^^^^^^^^
----
-ZioShieldNoNullExample.scala:8:3: error: nullable: null usage
-  null
-  ^^^^
----
-ZioShieldNoNullExample.scala:10:27: error: possibly nullable
-  ZioShieldNoNullExample2.annotatedNullable("foo")
-                          ^^^^^^^^^^^^^^^^^
----
-ZioShieldNoNullExample.scala:11:27: error: possibly nullable
-  ZioShieldNoNullExample2.defBodyNullable("foo")
-                          ^^^^^^^^^^^^^^^
----
-ZioShieldNoNullExample.scala:14:27: error: possibly nullable
-  ZioShieldNoNullExample2.valBodyNullable
-                          ^^^^^^^^^^^^^^^
----
-ZioShieldNoNullExample.scala:15:27: error: possibly nullable
-  ZioShieldNoNullExample2.usingNullable("foo")
-                          ^^^^^^^^^^^^^

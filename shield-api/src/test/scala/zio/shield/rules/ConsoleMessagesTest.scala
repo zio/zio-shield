@@ -62,6 +62,15 @@ object ConsoleMessagesTest extends TestSuite {
     val consoleMessages =
       zioShieldInstance
         .run(srcPaths)
+        .sortWith {
+          case (d1, d2) =>
+            val pathCmp = d1.path.compareTo(d2.path)
+            if (pathCmp != 0) {
+              pathCmp < 0
+            } else {
+              d1.consoleMessage.compareTo(d1.consoleMessage) < 0
+            }
+        }
         .map(_.consoleMessage.stripPrefix(s"${parent.toString}/"))
 
     val messagesResource =
