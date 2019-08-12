@@ -5,6 +5,8 @@ import scalafix.v1._
 
 import scala.collection.mutable
 
+import zio.shield.utils.SymbolInformationOps
+
 sealed trait FlowEdge
 
 final case class FunctionEdge(argsTypes: List[String],
@@ -21,10 +23,9 @@ object FunctionEdge {
         .map(_.symbol)
         .filter(_.isGlobal)
         .map(_.value)
-    val returnType = name.symbol.info.flatMap(_.signature match {
-      case MethodSignature(_, _, TypeRef(_, s: Symbol, _)) => Some(s.value)
-      case _                                               => None
-    })
+    val returnType = name.symbol.info.flatMap(_.safeSignature).collect {
+      case MethodSignature(_, _, TypeRef(_, s: Symbol, _)) => s.value
+    }
 
     (argsTypes, returnType)
   }
@@ -71,7 +72,8 @@ object ClassTraitEdge {
         .filter(_.isGlobal)
         .map(_.value)
     val (parentTypes, innerDefns) = name.symbol.info
-      .flatMap(_.signature match {
+      .flatMap(_.safeSignature)
+      .collect {
         case ClassSignature(_, parents, _, decls) =>
           val parentTypes = parents.collect {
             case TypeRef(_, s: Symbol, _) => s.value
@@ -79,9 +81,8 @@ object ClassTraitEdge {
           val innerDefns = decls.collect {
             case info if info.symbol.isGlobal => info.symbol.value
           }
-          Some((parentTypes, innerDefns))
-        case _ => None
-      })
+          (parentTypes, innerDefns)
+      }
       .getOrElse((List.empty, List.empty))
 
     ClassTraitEdge(ctorArgsTypes, parentTypes, innerDefns)
@@ -102,10 +103,10 @@ object ObjectEdge {
   def fromDefn(d: Defn.Object)(
       implicit semDoc: SemanticDocument): ObjectEdge = {
     val innerDefns = d.name.symbol.info
-      .flatMap(_.signature match {
-        case ClassSignature(_, _, _, decls) => Some(decls.map(_.symbol.value))
-        case _                              => None
-      })
+      .flatMap(_.safeSignature)
+      .collect {
+        case ClassSignature(_, _, _, decls) => decls.map(_.symbol.value)
+      }
       .getOrElse(List.empty)
 
     ObjectEdge(innerDefns)

@@ -111,18 +111,21 @@ class ConfiguredZioShield(val zioShieldConfig: ZioShield,
 
     val errors = inputs.flatMap { input =>
       val path = input.path.toNIO
-      val synDoc = synDocs(path)
-      val semDoc = semDocs(path)
 
-      val (newDoc, msgs) =
-        syntacticRules.syntacticPatch(synDoc, suppress = false)
-      val synErrors =
-        patch(input.text, newDoc, path).toList ++ msgs.map(lint(path, _))
+      val synErrors = synDocs.get(path) match {
+        case Some(synDoc) =>
+          val (newDoc, msgs) =
+            syntacticRules.syntacticPatch(synDoc, suppress = false)
+          patch(input.text, newDoc, path).toList ++ msgs.map(lint(path, _))
+        case None => List.empty
+      }
 
-      val semErrors = {
-        val (newDoc, msgs) =
-          semanticRules.semanticPatch(semDoc, suppress = false)
-        patch(input.text, newDoc, path).toList ++ msgs.map(lint(path, _))
+      val semErrors = semDocs.get(path) match {
+        case Some(semDoc) =>
+          val (newDoc, msgs) =
+            semanticRules.semanticPatch(semDoc, suppress = false)
+          patch(input.text, newDoc, path).toList ++ msgs.map(lint(path, _))
+        case None => List.empty
       }
 
       semFailErrors ++ synErrors ++ semErrors

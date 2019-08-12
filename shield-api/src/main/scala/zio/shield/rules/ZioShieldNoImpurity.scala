@@ -15,7 +15,7 @@ class ZioShieldNoImpurity(cache: FlowCache)
       ZioBlockDetector.lintFunction(s =>
         cache.searchTag(Tag.Impure)(s.value).getOrElse(false)) {
         case _ => "possibly impure" // TODO print proof
-      } orElse ImpurityInferrer.constImpurityChecker
+      } //orElse ImpurityInferrer.constImpurityChecker
 
     ZioBlockDetector.fromSingleLintPerTree(pf).traverse(doc.tree)
   }

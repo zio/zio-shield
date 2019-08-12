@@ -3,6 +3,7 @@ package zio.shield.flow
 import scalafix.v1._
 import zio.shield.rules.ZioBlockDetector
 import zio.shield.tag._
+import zio.shield.utils.SymbolInformationOps
 
 import scala.meta._
 
@@ -17,12 +18,14 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
       implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
 
     def isUnitMethod(s: Symbol): Boolean = {
-      s.info.map(_.signature) match {
-        case Some(MethodSignature(_, _, TypeRef(_, s: Symbol, List())))
-            if s.value == "scala/Unit#" =>
-          true
-        case _ => false
-      }
+      s.info
+        .flatMap(_.safeSignature)
+        .collect {
+          case MethodSignature(_, _, TypeRef(_, s: Symbol, List()))
+              if s.value == "scala/Unit#" =>
+            true
+        }
+        .getOrElse(false)
     }
 
     ZioBlockDetector.lintFunction(isUnitMethod) {
@@ -37,17 +40,19 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
       TagProp(Tag.Impure, cond = true, List(TagProof.GivenProof))
     } else {
 
-      val constPatch = flowCache.trees.get(symbol) match {
-        case Some(tree) =>
-          val maybePatch = for {
-            path <- flowCache.files.get(symbol)
-            doc <- flowCache.docs.get(path)
-            patch = tree.collect(constImpurityChecker(doc)).asPatch
-          } yield patch
+//      val constPatch = flowCache.trees.get(symbol) match {
+//        case Some(tree) =>
+//          val maybePatch = for {
+//            path <- flowCache.files.get(symbol)
+//            doc <- flowCache.docs.get(path)
+//            patch = tree.collect(constImpurityChecker(doc)).asPatch
+//          } yield patch
+//
+//          maybePatch.getOrElse(Patch.empty)
+//        case None => Patch.empty
+//      }
 
-          maybePatch.getOrElse(Patch.empty)
-        case None => Patch.empty
-      }
+      val constPatch = Patch.empty
 
       val impureSymbols = flowCache.edges.get(symbol) match {
         case Some(FunctionEdge(_, _, innerSymbols)) =>

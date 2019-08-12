@@ -1,7 +1,9 @@
 package zio.shield
 
 import scalafix.v1._
+
 import scala.meta._
+import scala.util.Try
 
 package object utils {
   def selectNamesFromPat(p: Pat): List[Term.Name] = p match {
@@ -14,5 +16,12 @@ package object utils {
       selectNamesFromPat(lhs) ++ rhs.flatMap(selectNamesFromPat)
     case Pat.Typed(lhs, _) => selectNamesFromPat(lhs)
     case _                 => List.empty
+  }
+
+  implicit class SymbolInformationOps(symbolInfo: SymbolInformation) {
+    def safeSignature: Option[Signature] =
+      Try {
+        symbolInfo.signature
+      }.toOption
   }
 }

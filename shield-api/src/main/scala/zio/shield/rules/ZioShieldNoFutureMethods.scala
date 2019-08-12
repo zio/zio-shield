@@ -5,18 +5,17 @@ import scalafix.v1._
 import scala.collection.mutable
 import scala.meta._
 
+import zio.shield.utils.SymbolInformationOps
+
 object ZioShieldNoFutureMethods
     extends SemanticRule("ZioShieldNoFutureMethods") {
 
   override def fix(implicit doc: SemanticDocument): Patch = {
 
-    def getType(symbol: Symbol): Option[SemanticType] = {
-      symbol.info.get.signature match {
-        case MethodSignature(_, _, returnType) =>
-          Some(returnType)
-        case _ => None
+    def getType(symbol: Symbol): Option[SemanticType] =
+      symbol.info.flatMap(_.safeSignature).collect {
+        case MethodSignature(_, _, returnType) => returnType
       }
-    }
 
     def detectFutureType(tpe: SemanticType): Boolean = tpe match {
       case TypeRef(_, s, _) if s.value == "scala/concurrent/Future#" => true

@@ -150,7 +150,6 @@ final case class FlowCacheImpl(
             }
           }
         }
-        processingSymbols -= symbol
       }
     }
 

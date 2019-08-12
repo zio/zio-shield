@@ -12,19 +12,13 @@ import scala.util.{Failure, Success, Try}
 
 object ZioShieldExtension {
   def symtab(semanticDbTargetRoot: Option[String],
-             fullClasspath: List[Path]): Either[String, SymbolTable] = {
-    Try(
+             fullClasspath: List[Path]): Either[Throwable, SymbolTable] =
+    Try {
       ClasspathOps.newSymbolTable(
         classpath = classpath(semanticDbTargetRoot, fullClasspath),
         out = System.out
       )
-    ) match {
-      case Success(symtab) =>
-        Right(symtab)
-      case Failure(e) =>
-        Left(s"Unable to load symbol table: ${e.getMessage}")
-    }
-  }
+    }.toEither
 
   def semanticdbTargetRoot(scalacOptions: List[String]): Option[String] = {
     val flag = "-P:semanticdb:targetroot:"
@@ -56,14 +50,16 @@ object ZioShieldExtension {
       doc: SyntacticDocument,
       path: Path,
       semanticDbTargetRoot: Option[String],
-      fullClasspath: List[Path]): Either[String, SemanticDocument] =
+      fullClasspath: List[Path]): Either[Throwable, SemanticDocument] =
     for {
       s <- symtab(semanticDbTargetRoot, fullClasspath)
-    } yield
-      SemanticDocument.fromPath(
-        doc,
-        AbsolutePath(path).toRelative(PathIO.workingDirectory),
-        classLoader(semanticDbTargetRoot, fullClasspath),
-        s
-      )
+      doc <- Try {
+        SemanticDocument.fromPath(
+          doc,
+          AbsolutePath(path).toRelative(PathIO.workingDirectory),
+          classLoader(semanticDbTargetRoot, fullClasspath),
+          s
+        )
+      }.toEither
+    } yield doc
 }

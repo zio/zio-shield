@@ -16,7 +16,7 @@ sealed trait ZioShieldDiagnostic {
       import scalafix.internal.util.PositionSyntax._
       pos.formatMessage(LintSeverity.Error.toString, message)
     case SemanticFailure(path, error) =>
-      s"Unable to load SemanticDb information for ${path.toString}: $error. Semantic rules are disabled."
+      s"Unable to load SemanticDb information for ${path.toString}: ${error.getMessage}. Semantic rules are disabled."
   }
 }
 
@@ -27,6 +27,6 @@ object ZioShieldDiagnostic {
   final case class Lint(path: Path, position: meta.Position, message: String)
       extends ZioShieldDiagnostic
 
-  final case class SemanticFailure(path: Path, error: String)
+  final case class SemanticFailure(path: Path, error: Throwable)
       extends ZioShieldDiagnostic
 }
