@@ -10,7 +10,7 @@ import zio.shield.utils
 import scala.collection.mutable
 
 trait FlowCache {
-  def files: mutable.Map[String, Path]
+  def files: mutable.Map[String, Path] // TODO add inverse index for files
   def docs: mutable.Map[Path, SemanticDocument]
   def trees: mutable.Map[String, Tree]
   def edges: mutable.Map[String, FlowEdge]
@@ -19,9 +19,14 @@ trait FlowCache {
   def inferredTags: mutable.Map[String, mutable.Buffer[TagProp[_]]]
 
   def clear(): Unit
-  def build(semDocs: Map[Path, SemanticDocument]): Unit
+  def update(semDocs: Map[Path, SemanticDocument]): Unit
+
   def searchTag(tag: Tag)(symbol: String): Option[Boolean]
-  def infer(inferrers: List[FlowInferrer[_]]): Unit
+
+  def deepInferAndCache(inferrers: List[FlowInferrer[_]])(
+      files: List[Path]): Unit
+
+  def stats: FlowCache.Stats
 }
 
 // TODO maybe we don't need buffers here
@@ -59,11 +64,11 @@ final case class FlowCacheImpl(
     inferredTags.clear()
   }
 
-  def build(semDocs: Map[Path, SemanticDocument]): Unit = {
-    clear()
-
+  def update(semDocs: Map[Path, SemanticDocument]): Unit = {
     semDocs.foreach {
       case (file, semDoc) =>
+        docs(file) = semDoc
+
         implicit val doc: SemanticDocument = semDoc
 
         def updateForSymbol(symbol: Symbol,
@@ -71,7 +76,6 @@ final case class FlowCacheImpl(
                             edge: FlowEdge): Unit = {
           if (symbol.isGlobal) {
             files(symbol.value) = file
-            docs(file) = semDoc
             trees(symbol.value) = tree
             userTags(symbol.value) = symbol
               .info(semDoc)
@@ -129,32 +133,52 @@ final case class FlowCacheImpl(
     }
   }
 
-  def infer(inferrers: List[FlowInferrer[_]]): Unit = if (inferrers.nonEmpty) {
-    val processingSymbols = mutable.HashSet[String]()
+  def deepInferAndCache(inferrers: List[FlowInferrer[_]])(
+      targetFiles: List[Path]): Unit =
+    if (inferrers.nonEmpty) {
+      val processingSymbols = mutable.HashSet[String]()
 
-    def dfs(symbol: String): Unit = {
-      if (!processingSymbols.contains(symbol) &&
-          (!inferredTags.contains(symbol) || inferredTags(symbol).isEmpty)) {
-        processingSymbols += symbol
-        edges.get(symbol).foreach { e =>
-          inferrers.foreach { i =>
-            if (i.isInferable(symbol, e)) {
-              i.dependentSymbols(e).foreach(dfs)
+      def dfs(symbol: String): Unit = {
+        if (!processingSymbols.contains(symbol) &&
+            (!inferredTags.contains(symbol) || inferredTags(symbol).isEmpty)) {
+          processingSymbols += symbol
+          edges.get(symbol).foreach { e =>
+            inferrers.foreach { i =>
+              if (i.isInferable(symbol, e)) {
+                i.dependentSymbols(e).foreach(dfs)
+              }
             }
-          }
-          if (!inferredTags.contains(symbol))
-            inferredTags(symbol) = mutable.Buffer()
-          inferrers.foreach { i =>
-            if (i.isInferable(symbol, e)) {
-              inferredTags(symbol) += i.infer(this)(symbol)
+            if (!inferredTags.contains(symbol))
+              inferredTags(symbol) = mutable.Buffer()
+            inferrers.foreach { i =>
+              if (i.isInferable(symbol, e)) {
+                inferredTags(symbol) += i.infer(this)(symbol)
+              }
             }
           }
         }
       }
+
+      val targetFilesSet = targetFiles.toSet
+
+      files.foreach {
+        case (symbol, file) if targetFilesSet.contains(file) => dfs(symbol)
+      }
     }
 
-    edges.keys.foreach(dfs)
-  }
+  def stats: FlowCache.Stats =
+    FlowCache.Stats(
+      docs.size,
+      edges.size,
+      edges.values.map {
+        case FunctionEdge(argsTypes, returnType, innerSymbols) =>
+          argsTypes.size + returnType.size + innerSymbols.size
+        case ClassTraitEdge(ctorArgsTypes, parentsTypes, innerDefns) =>
+          ctorArgsTypes.size + parentsTypes.size + innerDefns.size
+        case ObjectEdge(innerDefns)   => innerDefns.size
+        case ValVarEdge(innerSymbols) => innerSymbols.size
+      }.sum
+    )
 }
 
 object FlowCache {
@@ -164,4 +188,6 @@ object FlowCache {
                   mutable.Map.empty,
                   mutable.Map.empty,
                   mutable.Map.empty)
+
+  final case class Stats(filesCount: Int, symbolsCount: Int, edgesCount: Int)
 }

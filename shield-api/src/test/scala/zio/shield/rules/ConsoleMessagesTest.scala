@@ -5,8 +5,9 @@ import java.nio.file.{Files, Path, Paths}
 import scalafix.v1.Rule
 import utest._
 import zio.shield.flow.FlowCache
-import zio.shield.{ConfiguredZioShield, ZioShield}
+import zio.shield.{ConfiguredZioShield, ZioShield, ZioShieldDiagnostic}
 
+import scala.collection.mutable
 import scala.io.Source
 
 object ConsoleMessagesTest extends TestSuite {
@@ -59,9 +60,13 @@ object ConsoleMessagesTest extends TestSuite {
        List(path))
     } else (Paths.get("/"), "", List.empty)
 
-    val consoleMessages =
-      zioShieldInstance
-        .run(srcPaths)
+    val consoleMessages = {
+      val diagnostics = mutable.Buffer[ZioShieldDiagnostic]()
+
+      zioShieldInstance.updateCache(srcPaths)(diagnostics += _)
+      zioShieldInstance.run(srcPaths)(diagnostics += _)
+
+      diagnostics
         .sortWith {
           case (d1, d2) =>
             val pathCmp = d1.path.compareTo(d2.path)
@@ -72,6 +77,7 @@ object ConsoleMessagesTest extends TestSuite {
             }
         }
         .map(_.consoleMessage.stripPrefix(s"${parent.toString}/"))
+    }
 
     val messagesResource =
       Source.fromResource(s"consoleMessages/$name.messages")

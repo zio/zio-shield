@@ -10,25 +10,10 @@ import scala.meta.internal.symtab.SymbolTable
 import scala.meta.io.{AbsolutePath, Classpath}
 import scala.util.{Failure, Success, Try}
 
-object ZioShieldExtension {
-  def symtab(semanticDbTargetRoot: Option[String],
-             fullClasspath: List[Path]): Either[Throwable, SymbolTable] =
-    Try {
-      ClasspathOps.newSymbolTable(
-        classpath = classpath(semanticDbTargetRoot, fullClasspath),
-        out = System.out
-      )
-    }.toEither
+class ZioShieldExtension(fullClasspath: List[Path],
+                         semanticDbTargetRoot: Option[String] = None) {
 
-  def semanticdbTargetRoot(scalacOptions: List[String]): Option[String] = {
-    val flag = "-P:semanticdb:targetroot:"
-    scalacOptions
-      .find(_.startsWith(flag))
-      .map(_.stripPrefix(flag))
-  }
-
-  def classpath(semanticDbTargetRoot: Option[String],
-                fullClasspath: List[Path]): Classpath = {
+  val classpath: Classpath = {
     val targetroot = semanticDbTargetRoot
       .map(option => Classpath(option))
       .getOrElse(Classpath(Nil))
@@ -41,25 +26,38 @@ object ZioShieldExtension {
     baseClasspath ++ targetroot
   }
 
-  def classLoader(semanticDbTargetRoot: Option[String],
-                  fullClasspath: List[Path]): ClassLoader =
-    ClasspathOps.toOrphanClassLoader(
-      classpath(semanticDbTargetRoot, fullClasspath))
+  val symtab: Either[Throwable, SymbolTable] =
+    Try {
+      ClasspathOps.newSymbolTable(
+        classpath = classpath,
+        out = System.out
+      )
+    }.toEither
+
+  val classLoader: ClassLoader =
+    ClasspathOps.toOrphanClassLoader(classpath)
 
   def semanticDocumentFromPath(
       doc: SyntacticDocument,
-      path: Path,
-      semanticDbTargetRoot: Option[String],
-      fullClasspath: List[Path]): Either[Throwable, SemanticDocument] =
+      path: Path): Either[Throwable, SemanticDocument] =
     for {
-      s <- symtab(semanticDbTargetRoot, fullClasspath)
+      s <- symtab
       doc <- Try {
         SemanticDocument.fromPath(
           doc,
           AbsolutePath(path).toRelative(PathIO.workingDirectory),
-          classLoader(semanticDbTargetRoot, fullClasspath),
+          classLoader,
           s
         )
       }.toEither
     } yield doc
+}
+
+object ZioShieldExtension {
+  def semanticdbTargetRoot(scalacOptions: List[String]): Option[String] = {
+    val flag = "-P:semanticdb:targetroot:"
+    scalacOptions
+      .find(_.startsWith(flag))
+      .map(_.stripPrefix(flag))
+  }
 }

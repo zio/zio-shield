@@ -3,7 +3,7 @@ package zio.shield.sbt
 import sbt.Keys._
 import sbt.plugins.JvmPlugin
 import sbt.{Def, _}
-import zio.shield.ZioShield
+import zio.shield.{ZioShield, ZioShieldDiagnostic}
 
 object ZioShieldPlugin extends AutoPlugin {
   override def trigger: PluginTrigger = allRequirements
@@ -74,16 +74,36 @@ object ZioShieldPlugin extends AutoPlugin {
       val excludedZioShield =
         zioShield.exclude(excludedRules.value, excludedInferrers.value)
 
-      val errors =
-        excludedZioShield.run(
-          unmanagedSources.in(config).value.map(_.toPath).toList)
+      val files = unmanagedSources.in(config).value.map(_.toPath).toList
 
-      if (shieldFatalWarnings.value) {
-        if (errors.nonEmpty) {
-          throw new ZioShieldFailed(errors.map(_.consoleMessage))
+      var isError = false
+
+      log.info("Building ZIO Shield cache...")
+
+      val onDiagnostic: ZioShieldDiagnostic => Unit = d =>
+        if (shieldFatalWarnings.value) {
+          isError = true
+          log.error(d.consoleMessage)
+        } else {
+          log.warn(d.consoleMessage)
         }
-      } else {
-        errors.foreach(e => log.warn(e.consoleMessage))
+
+      excludedZioShield.updateCache(files)(onDiagnostic)
+
+      val stats = excludedZioShield.cacheStats
+
+      log.info(f"""||ZIO Shield Statistics|
+                   ||---------------------|
+                   ||Files: ${stats.filesCount}%14s|
+                   ||Symbols: ${stats.symbolsCount}%12s|
+                   ||Edges: ${stats.edgesCount}%14s|""".stripMargin)
+
+      log.info("Running ZIO Shield...")
+
+      excludedZioShield.run(files)(onDiagnostic)
+
+      if (isError) {
+        throw new ZioShieldFailed()
       }
     }
 }
