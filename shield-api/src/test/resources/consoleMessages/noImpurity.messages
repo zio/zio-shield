@@ -1,0 +1,7 @@
+ZioShieldNoImpurityExample.scala:15:31: error: possibly impure
+  ZioShieldNoImpurityExample2.annotatedImpure("foo")
+                              ^^^^^^^^^^^^^^^
+---
+ZioShieldNoImpurityExample2.scala:7:7: error: possibly impure
+  def annotatedImpure(foo: String): Unit = println(foo)
+      ^^^^^^^^^^^^^^^

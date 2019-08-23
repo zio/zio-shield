@@ -55,10 +55,18 @@ object ZioBlockDetector {
   val safeBlocksMatcher: SymbolMatcher =
     SymbolMatcher.normalized(safeBlocks: _*)
 
-  def lintSymbols(symbols: List[String])(
+  def safeBlockDetector(tree: Tree)(implicit doc: SemanticDocument): Boolean =
+    tree match {
+      case Term.Apply(Term.Select(safeBlocksMatcher(block), Term.Name("apply")),
+                      _) =>
+        true
+      case Term.Apply(safeBlocksMatcher(block), _) => true
+      case _                                       => false
+    }
+
+  def lintFunction(matcher: Symbol => Boolean)(
       lintMessage: PartialFunction[Symbol, String])(
       implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
-    val symbolMatcher = SymbolMatcher.normalized(symbols: _*)
 
     def skipTermSelect(term: Term): Boolean = term match {
       case _: Term.Name      => true
@@ -68,7 +76,7 @@ object ZioBlockDetector {
 
     def processName(name: Name): Option[Patch] = {
       val s = name.symbol
-      if (symbolMatcher.matches(s))
+      if (matcher(s))
         Some(
           Patch.lint(
             Diagnostic("",
@@ -88,5 +96,25 @@ object ZioBlockDetector {
         processName(name).get
       case name: Name if processName(name).isDefined => processName(name).get
     }
+  }
+
+  def lintSymbols(symbols: List[String])(
+      lintMessage: PartialFunction[Symbol, String])(
+      implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
+    val symbolMatcher = SymbolMatcher.normalized(symbols: _*)
+    lintFunction(symbolMatcher.matches)(lintMessage)
+  }
+
+  def lintPrefixes(prefixes: List[String])(
+      lintMessage: PartialFunction[Symbol, String])(
+      implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
+    lintFunction { s =>
+      prefixes.exists(s.value.startsWith)
+    }(lintMessage)
+  }
+
+  def lintPrefix(prefix: String)(lintMessage: PartialFunction[Symbol, String])(
+      implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
+    lintPrefixes(List(prefix))(lintMessage)
   }
 }

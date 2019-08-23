@@ -1,10 +1,15 @@
 package example
 
 object ExampleTest {
-  val b = 1.asInstanceOf[Long]
-
-  object WeekDay extends Enumeration {
-    type WeekDay = Value
-    val Mon, Tue, Wed, Thu, Fri, Sat, Sun = Value
+  def defBodyNullable(foo: String): String = {
+    if (foo.length > 1) {
+      foo
+    } else {
+      null
+    }
   }
+
+  defBodyNullable("foo")
+
+  1.asInstanceOf[Long]
 }

@@ -1,0 +1,19 @@
+ZioShieldNoReflectionExample.scala:3:22: error: scala reflection
+import scala.reflect.runtime.universe
+                     ^^^^^^^
+---
+ZioShieldNoReflectionExample.scala:3:30: error: scala reflection
+import scala.reflect.runtime.universe
+                             ^^^^^^^^
+---
+ZioShieldNoReflectionExample.scala:9:12: error: scala reflection
+  universe.typeOf[Foo].companion
+           ^^^^^^
+---
+ZioShieldNoReflectionExample.scala:9:24: error: scala reflection
+  universe.typeOf[Foo].companion
+                       ^^^^^^^^^
+---
+ZioShieldNoReflectionExample.scala:11:35: error: java reflection
+  val constr = new Foo().getClass.getConstructor()
+                                  ^^^^^^^^^^^^^^

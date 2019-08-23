@@ -3,7 +3,7 @@ package zio.shield.sbt
 import sbt.Keys._
 import sbt.plugins.JvmPlugin
 import sbt.{Def, _}
-import zio.shield.ZioShield
+import zio.shield.{ZioShield, ZioShieldDiagnostic}
 
 object ZioShieldPlugin extends AutoPlugin {
   override def trigger: PluginTrigger = allRequirements
@@ -16,6 +16,14 @@ object ZioShieldPlugin extends AutoPlugin {
       settingKey[Boolean](
         "Make all lint and patch warnings fatal, e.g. throwing error instead of warning"
       )
+    val excludedRules: SettingKey[List[String]] =
+      settingKey[List[String]](
+        "Exclude specific rules from code analysis"
+      )
+    val excludedInferrers: SettingKey[List[String]] =
+      settingKey[List[String]](
+        "Exclude specific tag inferrers from code analysis. It can cause excluding dependent rules."
+      )
 
     def shieldConfigSettings(config: Configuration): Seq[Def.Setting[_]] =
       Seq(
@@ -26,13 +34,15 @@ object ZioShieldPlugin extends AutoPlugin {
   import autoImport._
 
   override def globalSettings: Seq[Def.Setting[_]] = Seq(
-    shieldFatalWarnings := false
+    shieldFatalWarnings := false,
+    excludedRules := List.empty,
+    excludedInferrers := List.empty
   )
 
   override def projectSettings: Seq[Def.Setting[_]] =
     Seq(
-      libraryDependencies += compilerPlugin(
-        "org.scalameta" % "semanticdb-scalac" % "4.1.0" cross CrossVersion.full),
+      libraryDependencies ++= Seq(compilerPlugin(
+        "org.scalameta" % "semanticdb-scalac" % "4.1.0" cross CrossVersion.full)),
       scalacOptions += "-Yrangepos"
     ) ++
       Seq(Compile, Test).flatMap(c => inConfig(c)(shieldConfigSettings(c)))
@@ -41,20 +51,59 @@ object ZioShieldPlugin extends AutoPlugin {
       config: Configuration
   ): Def.Initialize[Task[Unit]] =
     Def.task {
-      val zioShield = ZioShield(scalacOptions.in(config).value.toList,
-                                fullClasspath.value.map(_.data.toPath).toList)(
-        ZioShield.allSyntacticRules,
-        ZioShield.allSemanticRules)
-
-      val errors =
-        zioShield.run(unmanagedSources.in(config).value.map(_.toPath).toList)
-
       val log = streams.value.log
 
-      if (shieldFatalWarnings.value) {
-        throw new ZioShieldFailed(errors.map(_.consoleMessage))
-      } else {
-        errors.foreach(e => log.warn(e.consoleMessage))
+      val zioShield =
+        ZioShield(scalacOptions.in(config).value.toList,
+                  fullClasspath.value.map(_.data.toPath).toList).withAllRules()
+
+      excludedRules.value.foreach { er =>
+        if (!zioShield.syntacticRules.rules.exists(_.name.value == er) &&
+            !zioShield.semanticRules.rules.exists(_.name.value == er)) {
+          log.warn(
+            s""""$er" is not a supported rule, no rule will be excluded""")
+        }
+      }
+
+      excludedInferrers.value.foreach { ei =>
+        if (!zioShield.inferrers.exists(_.name == ei)) {
+          log.warn(s""""$ei" is not a supported inferrer""")
+        }
+      }
+
+      val excludedZioShield =
+        zioShield.exclude(excludedRules.value, excludedInferrers.value)
+
+      val files = unmanagedSources.in(config).value.map(_.toPath).toList
+
+      var isError = false
+
+      log.info("Building ZIO Shield cache...")
+
+      val onDiagnostic: ZioShieldDiagnostic => Unit = d =>
+        if (shieldFatalWarnings.value) {
+          isError = true
+          log.error(d.consoleMessage)
+        } else {
+          log.warn(d.consoleMessage)
+        }
+
+      excludedZioShield.updateCache(files)(onDiagnostic)
+
+      val stats = excludedZioShield.cacheStats
+
+      log.info(f"""||ZIO Shield Statistics|
+                   ||---------------------|
+                   ||Files: ${stats.filesCount}%14s|
+                   ||Symbols: ${stats.symbolsCount}%12s|
+                   ||Edges: ${stats.edgesCount}%14s|""".stripMargin)
+
+      log.info("Running ZIO Shield...")
+
+      excludedZioShield.run(files)(onDiagnostic)
+
+      if (isError) {
+        throw new ZioShieldFailed()
       }
     }
 }

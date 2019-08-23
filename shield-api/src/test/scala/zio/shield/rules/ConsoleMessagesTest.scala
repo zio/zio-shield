@@ -1,11 +1,13 @@
 package zio.shield.rules
 
-import java.nio.file.{Path, Paths}
+import java.nio.file.{Files, Path, Paths}
 
 import scalafix.v1.Rule
 import utest._
-import zio.shield.ZioShield
+import zio.shield.flow.FlowCache
+import zio.shield.{ConfiguredZioShield, ZioShield, ZioShieldDiagnostic}
 
+import scala.collection.mutable
 import scala.io.Source
 
 object ConsoleMessagesTest extends TestSuite {
@@ -24,46 +26,113 @@ object ConsoleMessagesTest extends TestSuite {
     }
   }
 
-  def consoleMessageTest(rule: Rule): Unit = {
-    val srcPath = testsPath.resolve(
-      s"shield-api/src/test/scala/zio/shield/rules/examples/${rule.name.toString}Example.scala")
+  val verbose = true
 
-    val zioShieldInstance =
-      ZioShield(None, fullClasspath)(List.empty, List(rule))
+  def consoleMessageTest(
+      zioShieldRule: FlowCache => Rule with FlowInferenceDependent,
+      path: Path): Unit = {
+    val instance = ZioShield(None, fullClasspath).apply(
+      semanticZioShieldRules = List(zioShieldRule))
+    runWithInstance(instance, path)
+  }
 
-    val consoleMessages =
-      zioShieldInstance
-        .run(srcPath)
-        .map(_.consoleMessage.stripPrefix(s"${srcPath.getParent.toString}/"))
+  def consoleMessageTest(rule: Rule, path: Path): Unit = {
+    val instance =
+      ZioShield(None, fullClasspath).apply(semanticRules = List(rule))
+    runWithInstance(instance, path)
+  }
 
-    val messagesResource = Source.fromResource(
-      s"consoleMessages/${rule.name.toString}Example.messages")
+  private def runWithInstance(zioShieldInstance: ConfiguredZioShield,
+                              path: Path): Unit = {
+    val (parent, name, srcPaths) = if (Files.isDirectory(path)) {
+      import scala.collection.JavaConverters._
+      (path,
+       path.getFileName.toString,
+       Files
+         .list(path)
+         .filter(f => Files.isRegularFile(f))
+         .iterator()
+         .asScala
+         .toList)
+    } else if (Files.isRegularFile(path)) {
+      (path.getParent,
+       path.getFileName.toString.stripSuffix(".scala"),
+       List(path))
+    } else (Paths.get("/"), "", List.empty)
+
+    val consoleMessages = {
+      val diagnostics = mutable.Buffer[ZioShieldDiagnostic]()
+
+      zioShieldInstance.updateCache(srcPaths)(diagnostics += _)
+      zioShieldInstance.run(srcPaths)(diagnostics += _)
+
+      diagnostics
+        .sortWith {
+          case (d1, d2) =>
+            val pathCmp = d1.path.compareTo(d2.path)
+            if (pathCmp != 0) {
+              pathCmp < 0
+            } else {
+              d1.consoleMessage.compareTo(d1.consoleMessage) < 0
+            }
+        }
+        .map(_.consoleMessage.stripPrefix(s"${parent.toString}/"))
+    }
+
+    val messagesResource =
+      Source.fromResource(s"consoleMessages/$name.messages")
     val targetMessages = messagesResource.mkString.split("\n---\n").toList
 
-    consoleMessages ==> targetMessages
+    if (verbose) {
+      if (consoleMessages != targetMessages) {
+        val msg =
+          s"""Messages are not equal
+             |
+             |Expected messages:
+             |${targetMessages.mkString("\n---\n")}
+             |
+             |Actual messages:
+             |${consoleMessages.mkString("\n---\n")}""".stripMargin
+        Predef.assert(false, msg)
+      }
+    } else {
+      consoleMessages ==> targetMessages
+    }
   }
 
   val tests = Tests {
+
+    def autoSrcPath(implicit utestPath: utest.framework.TestPath) =
+      testsPath.resolve(
+        s"shield-api/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}Example.scala")
+
+    def autoDirPath(implicit utestPath: utest.framework.TestPath) =
+      testsPath.resolve(
+        s"shield-api/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}")
+
     test("ZioShieldNoFutureMethods") {
-      consoleMessageTest(ZioShieldNoFutureMethods)
+      consoleMessageTest(ZioShieldNoFutureMethods, autoSrcPath)
     }
     test("ZioShieldNoIgnoredExpressions") {
-      consoleMessageTest(ZioShieldNoIgnoredExpressions)
+      consoleMessageTest(ZioShieldNoIgnoredExpressions, autoSrcPath)
     }
-    test("ZioShieldNoSideEffects") {
-      consoleMessageTest(ZioShieldNoSideEffects)
+    test("noImpurity") {
+      consoleMessageTest(fc => new ZioShieldNoImpurity(fc), autoDirPath)
     }
-    test("ZioShieldNoThrowCatch") {
-      consoleMessageTest(ZioShieldNoThrowCatch)
+    test("noPartial") {
+      consoleMessageTest(fc => new ZioShieldNoPartial(fc), autoDirPath)
     }
-    test("ZioShieldNoPartialFunctions") {
-      consoleMessageTest(ZioShieldNoPartialFunctions)
+    test("noNull") {
+      consoleMessageTest(fc => new ZioShieldNoNull(fc), autoDirPath)
     }
-    test("ZioShieldNoNull") {
-      consoleMessageTest(ZioShieldNoNull)
+    test("noIndirectUse") {
+      consoleMessageTest(fc => new ZioShieldNoIndirectUse(fc), autoDirPath)
     }
     test("ZioShieldNoTypeCasting") {
-      consoleMessageTest(ZioShieldNoTypeCasting)
+      consoleMessageTest(ZioShieldNoTypeCasting, autoSrcPath)
+    }
+    test("ZioShieldNoReflection") {
+      consoleMessageTest(ZioShieldNoReflection, autoSrcPath)
     }
   }
 }

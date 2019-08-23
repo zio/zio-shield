@@ -4,32 +4,111 @@ import java.nio.file.Path
 
 import metaconfig.Conf
 import metaconfig.typesafeconfig.typesafeConfigMetaconfigParser
-import scalafix.internal.rule.DisableSyntax
-import scalafix.internal.scaluzzi.DisableLegacy
 import scalafix.internal.v1.Rules
 import scalafix.lint.RuleDiagnostic
 import scalafix.shield.ZioShieldExtension
-import scalafix.v1.{Configuration, Rule, SyntacticDocument}
+import scalafix.v1._
+import zio.shield.flow._
+import zio.shield.rules._
 
+import scala.collection.mutable
 import scala.io.Source
 
 class ZioShield private (val semanticDbTargetRoot: Option[String],
                          val fullClasspath: List[Path]) {
-  def apply(syntacticRules: Rules, semanticRules: Rules): ConfiguredZioShield =
-    new ConfiguredZioShield(this, syntacticRules, semanticRules)
 
-  def apply(syntacticRules: List[Rule],
-            semanticRules: List[Rule]): ConfiguredZioShield =
-    new ConfiguredZioShield(this, Rules(syntacticRules), Rules(semanticRules))
+  val flowCache: FlowCache = FlowCache.empty
+
+  def apply(syntacticRules: List[Rule] = List.empty,
+            semanticRules: List[Rule] = List.empty,
+            semanticZioShieldRules: List[
+              FlowCache => Rule with FlowInferenceDependent] = List.empty)
+    : ConfiguredZioShield =
+    new ConfiguredZioShield(
+      this,
+      Rules(syntacticRules),
+      Rules(semanticRules ++ semanticZioShieldRules.map(_(flowCache))))
+
+  def withAllRules(): ConfiguredZioShield =
+    apply(List.empty, ZioShield.allSemanticRules, ZioShield.allZioShieldRules)
 }
 
-class ConfiguredZioShield(zioShieldConfig: ZioShield,
-                          syntacticRules: Rules,
-                          semanticRules: Rules) {
+class ConfiguredZioShield(val zioShieldConfig: ZioShield,
+                          val syntacticRules: Rules,
+                          val semanticRules: Rules) {
 
-  def run(file: Path): List[ZioShieldDiagnostic] = run(List(file))
+  private var synDocs: mutable.Map[Path, SyntacticDocument] =
+    mutable.HashMap.empty
+  private var semDocs: mutable.Map[Path, SemanticDocument] =
+    mutable.HashMap.empty
 
-  def run(files: List[Path]): List[ZioShieldDiagnostic] = {
+  private val zioShieldExtension = new ZioShieldExtension(
+    zioShieldConfig.fullClasspath,
+    zioShieldConfig.semanticDbTargetRoot)
+
+  lazy val inferrers: List[FlowInferrer[_]] =
+    semanticRules.rules
+      .collect {
+        case flowDependent: FlowInferenceDependent => flowDependent.dependsOn
+      }
+      .flatten
+      .distinct
+
+  def exclude(
+      excludedRules: List[String] = List.empty,
+      excludedInferrers: List[String] = List.empty): ConfiguredZioShield =
+    new ConfiguredZioShield(
+      zioShieldConfig,
+      Rules(
+        syntacticRules.rules.filterNot(r =>
+          excludedRules.contains(r.name.value)),
+      ),
+      Rules(
+        semanticRules.rules.filterNot {
+          case flowDependent: FlowInferenceDependent =>
+            excludedInferrers.exists(ei =>
+              flowDependent.dependsOn.exists(_.name == ei)) ||
+              excludedRules.contains(flowDependent.name.value)
+          case r => excludedRules.contains(r.name.value)
+        }
+      )
+    )
+
+  private def updateDocuments(files: List[Path])(
+      onDiagnostic: ZioShieldDiagnostic => Unit): Unit = {}
+
+  def updateCache(files: List[Path])(
+      onDiagnostic: ZioShieldDiagnostic => Unit): Unit = {
+    val inputs = files.map(meta.Input.File(_))
+
+    inputs.foreach { i =>
+      synDocs.update(i.path.toNIO, SyntacticDocument.fromInput(i))
+    }
+
+    inputs.foreach { i =>
+      val path = i.path.toNIO
+      val synDoc = synDocs(path)
+      zioShieldExtension.semanticDocumentFromPath(
+        synDoc,
+        i.path.toNIO,
+      ) match {
+        case Left(err) =>
+          onDiagnostic(ZioShieldDiagnostic.SemanticFailure(path, err))
+        case Right(doc) => semDocs.update(path, doc)
+      }
+    }
+
+    zioShieldConfig.flowCache.update(
+      files.flatMap(f => semDocs.get(f).map(f -> _)).toMap)
+    zioShieldConfig.flowCache.deepInferAndCache(inferrers)(files)
+  }
+
+  def cacheStats: FlowCache.Stats = zioShieldConfig.flowCache.stats
+
+  def run(files: List[Path])(
+      onDiagnostic: ZioShieldDiagnostic => Unit): Unit = {
+
+    val inputs = files.map(meta.Input.File(_))
 
     def lint(path: Path, msg: RuleDiagnostic): ZioShieldDiagnostic =
       ZioShieldDiagnostic.Lint(path, msg.position, msg.message)
@@ -43,33 +122,27 @@ class ConfiguredZioShield(zioShieldConfig: ZioShield,
         None
       }
 
-    val errors = files.flatMap { f =>
-      val input = meta.Input.File(f)
-      val synDoc = SyntacticDocument.fromInput(input)
-      val (newDoc, msgs) =
-        syntacticRules.syntacticPatch(synDoc, suppress = false)
-      val synErrors =
-        patch(input.text, newDoc, f).toList ++ msgs.map(lint(f, _))
+    inputs.foreach { input =>
+      val path = input.path.toNIO
 
-      val semDoc = ZioShieldExtension.semanticDocumentFromPath(
-        synDoc,
-        f,
-        zioShieldConfig.semanticDbTargetRoot,
-        zioShieldConfig.fullClasspath
-      )
-      val semErrors = semDoc match {
-        case Left(err) =>
-          List(ZioShieldDiagnostic.SemanticFailure(f, err))
-        case Right(doc) =>
+      synDocs.get(path) match {
+        case Some(synDoc) =>
           val (newDoc, msgs) =
-            semanticRules.semanticPatch(doc, suppress = false)
-          patch(input.text, newDoc, f).toList ++ msgs.map(lint(f, _))
+            syntacticRules.syntacticPatch(synDoc, suppress = false)
+          patch(input.text, newDoc, path).foreach(onDiagnostic)
+          msgs.foreach(m => onDiagnostic(lint(path, m)))
+        case None =>
       }
 
-      synErrors ++ semErrors
+      semDocs.get(path) match {
+        case Some(semDoc) =>
+          val (newDoc, msgs) =
+            semanticRules.semanticPatch(semDoc, suppress = false)
+          patch(input.text, newDoc, path).foreach(onDiagnostic)
+          msgs.foreach(m => onDiagnostic(lint(path, m)))
+        case None =>
+      }
     }
-
-    errors
   }
 }
 
@@ -83,6 +156,7 @@ object ZioShield {
     new ZioShield(ZioShieldExtension.semanticdbTargetRoot(scalacOptions),
                   fullClasspath)
 
+  @deprecated
   private val shieldConf: Conf = Conf
     .parseString(
       Source
@@ -91,23 +165,22 @@ object ZioShield {
         .mkString)
     .get
 
+  @deprecated
   private val conf = Configuration().withConf(shieldConf)
 
+  @deprecated
   private val all = Rules.all(this.getClass.getClassLoader)
 
-  val allSyntacticRules: Rules = {
-    val selectedRules = all.collect {
-      case r: DisableSyntax => r
-    }
+  val allSemanticRules = List(ZioShieldNoFutureMethods,
+                              ZioShieldNoIgnoredExpressions,
+                              ZioShieldNoReflection,
+                              ZioShieldNoTypeCasting)
 
-    Rules(selectedRules.map(_.withConfiguration(conf).get))
-  }
-
-  val allSemanticRules: Rules = {
-    val selectedRules = all.collect {
-      case r: DisableLegacy => r
-    }
-
-    Rules(selectedRules.map(_.withConfiguration(conf).get))
-  }
+  val allZioShieldRules: List[FlowCache => Rule with FlowInferenceDependent] =
+    List(
+      new ZioShieldNoImpurity(_),
+      new ZioShieldNoIndirectUse(_),
+      new ZioShieldNoNull(_),
+      new ZioShieldNoPartial(_)
+    )
 }

@@ -1,24 +1,28 @@
 package zio.shield.rules
 
-import scala.meta._
 import scalafix.v1._
+import zio.shield.flow.{FlowCache, FlowInferrer, NullabilityInferrer}
+import zio.shield.tag.Tag
 
-object ZioShieldNoNull extends SemanticRule("ZioShieldNoNull") {
+import scala.meta._
+
+class ZioShieldNoNull(cache: FlowCache)
+    extends SemanticRule("ZioShieldNoNull")
+    with FlowInferenceDependent {
 
   override def fix(implicit doc: SemanticDocument): Patch = {
 
-    val nullableSymbols = List(
-      "java/io/File.getParent"
-    ) // TODO possible can be constructed via Java reflection or bytecode analysis
-
     val pf: PartialFunction[Tree, Patch] =
-      ZioBlockDetector.lintSymbols(nullableSymbols) {
-        case _ => "nullable method"
+      ZioBlockDetector.lintFunction(s =>
+        cache.searchTag(Tag.Nullable)(s.value).getOrElse(false)) {
+        case _ => "possibly nullable" // TODO print proof
       } orElse {
         case l: Lit.Null =>
-          Patch.lint(Diagnostic("", "null is forbidden", l.pos))
+          Patch.lint(Diagnostic("", "nullable: null usage", l.pos))
       }
 
     ZioBlockDetector.fromSingleLintPerTree(pf).traverse(doc.tree)
   }
+
+  def dependsOn: List[FlowInferrer[_]] = List(NullabilityInferrer)
 }
