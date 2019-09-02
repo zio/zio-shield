@@ -1,0 +1,71 @@
+ZioShieldShowcase.scala:23:7: error: possibly nullable
+  def nullable(): Response = {
+      ^^^^^^^^
+---
+ZioShieldShowcase.scala:24:18: error: nullable: null usage
+    GoodResponse(null)
+                 ^^^^
+---
+ZioShieldShowcase.scala:27:7: error: possibly nullable
+  def handleResponse(response: Response): Unit = {
+      ^^^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:39:9: error: possibly nullable
+        handleResponse(alwaysGood())
+        ^^^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:40:9: error: possibly nullable
+        handleResponse(nullable())
+        ^^^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:40:24: error: possibly nullable
+        handleResponse(nullable())
+                       ^^^^^^^^
+---
+ZioShieldShowcase.scala:27:7: error: possible partial symbol
+  def handleResponse(response: Response): Unit = {
+      ^^^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:32:7: error: not total: throwing exceptions
+      throw new RuntimeException("Bad response!")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:39:9: error: possible partial symbol
+        handleResponse(alwaysGood())
+        ^^^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:40:9: error: possible partial symbol
+        handleResponse(nullable())
+        ^^^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:28:18: error: type casting
+    if (response.isInstanceOf[BadResponse]) {
+                 ^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:29:34: error: type casting
+      val badResponse = response.asInstanceOf[BadResponse]
+                                 ^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:33:25: error: type casting
+    } else if (response.isInstanceOf[GoodResponse]) {
+                        ^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:34:35: error: type casting
+      val goodResponse = response.asInstanceOf[GoodResponse]
+                                  ^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:31:7: error: ignored expression
+      println(badResponse.error)
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:39:9: error: ignored expression
+        handleResponse(alwaysGood())
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:40:9: error: ignored expression
+        handleResponse(nullable())
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:8:7: error: Future returning method
+  def bigComputation(data: String): Future[Int] = Future {
+      ^^^^^^^^^^^^^^

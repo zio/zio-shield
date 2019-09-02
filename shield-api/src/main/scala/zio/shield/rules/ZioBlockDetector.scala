@@ -69,6 +69,7 @@ object ZioBlockDetector {
       implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
 
     def skipTermSelect(term: Term): Boolean = term match {
+      case _: Import    => false
       case _: Term.Name      => true
       case Term.Select(q, _) => skipTermSelect(q)
       case _                 => false

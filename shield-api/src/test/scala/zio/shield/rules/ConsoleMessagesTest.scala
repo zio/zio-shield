@@ -29,16 +29,25 @@ object ConsoleMessagesTest extends TestSuite {
   val verbose = true
 
   def consoleMessageTest(
-      zioShieldRule: FlowCache => Rule with FlowInferenceDependent,
+      rules: List[Rule],
+      zioShieldRules: List[FlowCache => Rule with FlowInferenceDependent],
       path: Path): Unit = {
-    val instance = ZioShield(None, fullClasspath).apply(
-      semanticZioShieldRules = List(zioShieldRule))
+    val instance = ZioShield(None, fullClasspath)
+      .apply(semanticRules = rules, semanticZioShieldRules = zioShieldRules)
     runWithInstance(instance, path)
   }
 
-  def consoleMessageTest(rule: Rule, path: Path): Unit = {
+  def consoleMessageTest(
+      zioShieldRule: FlowCache => Rule with FlowInferenceDependent,
+      path: Path): Unit =
+    consoleMessageTest(List.empty, List(zioShieldRule), path)
+
+  def consoleMessageTest(rule: Rule, path: Path): Unit =
+    consoleMessageTest(List(rule), List.empty, path)
+
+  def consoleMessageTest(rules: List[Rule], path: Path): Unit = {
     val instance =
-      ZioShield(None, fullClasspath).apply(semanticRules = List(rule))
+      ZioShield(None, fullClasspath).apply(semanticRules = rules)
     runWithInstance(instance, path)
   }
 
@@ -104,16 +113,16 @@ object ConsoleMessagesTest extends TestSuite {
 
     def autoSrcPath(implicit utestPath: utest.framework.TestPath) =
       testsPath.resolve(
-        s"shield-api/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}Example.scala")
+        s"shield-api/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}.scala")
 
     def autoDirPath(implicit utestPath: utest.framework.TestPath) =
       testsPath.resolve(
         s"shield-api/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}")
 
-    test("ZioShieldNoFutureMethods") {
+    test("ZioShieldNoFutureMethodsExample") {
       consoleMessageTest(ZioShieldNoFutureMethods, autoSrcPath)
     }
-    test("ZioShieldNoIgnoredExpressions") {
+    test("ZioShieldNoIgnoredExpressionsExample") {
       consoleMessageTest(ZioShieldNoIgnoredExpressions, autoSrcPath)
     }
     test("noImpurity") {
@@ -128,11 +137,16 @@ object ConsoleMessagesTest extends TestSuite {
     test("noIndirectUse") {
       consoleMessageTest(fc => new ZioShieldNoIndirectUse(fc), autoDirPath)
     }
-    test("ZioShieldNoTypeCasting") {
+    test("ZioShieldNoTypeCastingExample") {
       consoleMessageTest(ZioShieldNoTypeCasting, autoSrcPath)
     }
-    test("ZioShieldNoReflection") {
+    test("ZioShieldNoReflectionExample") {
       consoleMessageTest(ZioShieldNoReflection, autoSrcPath)
+    }
+    test("ZioShieldShowcase") {
+      consoleMessageTest(ZioShield.allSemanticRules,
+                         ZioShield.allZioShieldRules,
+                         autoSrcPath)
     }
   }
 }

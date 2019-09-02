@@ -6,7 +6,8 @@ inThisBuild(
     organization := "zio.shield",
     licenses := Seq(
       "Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")
-    )
+    ),
+    resolvers += Resolver.sonatypeRepo("snapshots")
   )
 )
 
@@ -19,6 +20,9 @@ lazy val shieldApi = (project in file("shield-api"))
       scalafixRules,
       scalafixReflect,
       scaluzzi,
+      circeCore,
+      circeGeneric,
+      circeYaml,
       utest % "test",
       zio % "test",
       compilerPlugin(

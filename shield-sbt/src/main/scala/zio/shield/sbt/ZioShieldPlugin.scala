@@ -53,26 +53,19 @@ object ZioShieldPlugin extends AutoPlugin {
     Def.task {
       val log = streams.value.log
 
-      val zioShield =
-        ZioShield(scalacOptions.in(config).value.toList,
-                  fullClasspath.value.map(_.data.toPath).toList).withAllRules()
-
       excludedRules.value.foreach { er =>
-        if (!zioShield.syntacticRules.rules.exists(_.name.value == er) &&
-            !zioShield.semanticRules.rules.exists(_.name.value == er)) {
+        if (ZioShield.allSemanticRules.exists(_.name.value == er)) {
           log.warn(
             s""""$er" is not a supported rule, no rule will be excluded""")
         }
       }
 
-      excludedInferrers.value.foreach { ei =>
-        if (!zioShield.inferrers.exists(_.name == ei)) {
-          log.warn(s""""$ei" is not a supported inferrer""")
-        }
-      }
+      // TODO add check for inferrers
 
-      val excludedZioShield =
-        zioShield.exclude(excludedRules.value, excludedInferrers.value)
+      val zioShield =
+        ZioShield(scalacOptions.in(config).value.toList,
+                  fullClasspath.value.map(_.data.toPath).toList)
+          .withExcluded(excludedRules.value, excludedInferrers.value)
 
       val files = unmanagedSources.in(config).value.map(_.toPath).toList
 
@@ -86,11 +79,11 @@ object ZioShieldPlugin extends AutoPlugin {
           log.error(d.consoleMessage)
         } else {
           log.warn(d.consoleMessage)
-        }
+      }
 
-      excludedZioShield.updateCache(files)(onDiagnostic)
+      zioShield.updateCache(files)(onDiagnostic)
 
-      val stats = excludedZioShield.cacheStats
+      val stats = zioShield.cacheStats
 
       log.info(f"""||ZIO Shield Statistics|
                    ||---------------------|
@@ -100,7 +93,7 @@ object ZioShieldPlugin extends AutoPlugin {
 
       log.info("Running ZIO Shield...")
 
-      excludedZioShield.run(files)(onDiagnostic)
+      zioShield.run(files)(onDiagnostic)
 
       if (isError) {
         throw new ZioShieldFailed()

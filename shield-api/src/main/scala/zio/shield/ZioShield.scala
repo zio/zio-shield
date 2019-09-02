@@ -2,44 +2,59 @@ package zio.shield
 
 import java.nio.file.Path
 
-import metaconfig.Conf
-import metaconfig.typesafeconfig.typesafeConfigMetaconfigParser
 import scalafix.internal.v1.Rules
 import scalafix.lint.RuleDiagnostic
 import scalafix.shield.ZioShieldExtension
 import scalafix.v1._
+import zio.shield.config.Config
 import zio.shield.flow._
 import zio.shield.rules._
 
 import scala.collection.mutable
-import scala.io.Source
 
 class ZioShield private (val semanticDbTargetRoot: Option[String],
                          val fullClasspath: List[Path]) {
 
   val flowCache: FlowCache = FlowCache.empty
 
-  def apply(syntacticRules: List[Rule] = List.empty,
-            semanticRules: List[Rule] = List.empty,
-            semanticZioShieldRules: List[
-              FlowCache => Rule with FlowInferenceDependent] = List.empty)
-    : ConfiguredZioShield =
+  private[shield] def apply(syntacticRules: List[Rule] = List.empty,
+                            semanticRules: List[Rule] = List.empty,
+                            semanticZioShieldRules: List[
+                              FlowCache => Rule with FlowInferenceDependent] =
+                              List.empty): ConfiguredZioShield =
     new ConfiguredZioShield(
       this,
       Rules(syntacticRules),
       Rules(semanticRules ++ semanticZioShieldRules.map(_(flowCache))))
 
+  def withExcluded(
+      excludedRules: List[String] = List.empty,
+      excludedInferrers: List[String] = List.empty): ConfiguredZioShield =
+    apply(
+      List.empty,
+      ZioShield.allSemanticRules.filterNot {
+        case flowDependent: FlowInferenceDependent =>
+          excludedInferrers.exists(ei =>
+            flowDependent.dependsOn.exists(_.name == ei)) ||
+            excludedRules.contains(flowDependent.name.value)
+        case r => excludedRules.contains(r.name.value)
+      }
+    )
+
   def withAllRules(): ConfiguredZioShield =
     apply(List.empty, ZioShield.allSemanticRules, ZioShield.allZioShieldRules)
+
+  def withConfig(config: Config): ConfiguredZioShield =
+    withExcluded(config.excludedRules, config.excludedInferrers)
 }
 
 class ConfiguredZioShield(val zioShieldConfig: ZioShield,
                           val syntacticRules: Rules,
                           val semanticRules: Rules) {
 
-  private var synDocs: mutable.Map[Path, SyntacticDocument] =
+  private val synDocs: mutable.Map[Path, SyntacticDocument] =
     mutable.HashMap.empty
-  private var semDocs: mutable.Map[Path, SemanticDocument] =
+  private val semDocs: mutable.Map[Path, SemanticDocument] =
     mutable.HashMap.empty
 
   private val zioShieldExtension = new ZioShieldExtension(
@@ -53,29 +68,6 @@ class ConfiguredZioShield(val zioShieldConfig: ZioShield,
       }
       .flatten
       .distinct
-
-  def exclude(
-      excludedRules: List[String] = List.empty,
-      excludedInferrers: List[String] = List.empty): ConfiguredZioShield =
-    new ConfiguredZioShield(
-      zioShieldConfig,
-      Rules(
-        syntacticRules.rules.filterNot(r =>
-          excludedRules.contains(r.name.value)),
-      ),
-      Rules(
-        semanticRules.rules.filterNot {
-          case flowDependent: FlowInferenceDependent =>
-            excludedInferrers.exists(ei =>
-              flowDependent.dependsOn.exists(_.name == ei)) ||
-              excludedRules.contains(flowDependent.name.value)
-          case r => excludedRules.contains(r.name.value)
-        }
-      )
-    )
-
-  private def updateDocuments(files: List[Path])(
-      onDiagnostic: ZioShieldDiagnostic => Unit): Unit = {}
 
   def updateCache(files: List[Path])(
       onDiagnostic: ZioShieldDiagnostic => Unit): Unit = {
@@ -155,21 +147,6 @@ object ZioShield {
   def apply(scalacOptions: List[String], fullClasspath: List[Path]): ZioShield =
     new ZioShield(ZioShieldExtension.semanticdbTargetRoot(scalacOptions),
                   fullClasspath)
-
-  @deprecated
-  private val shieldConf: Conf = Conf
-    .parseString(
-      Source
-        .fromInputStream(
-          getClass.getClassLoader.getResourceAsStream("shield.scalafix.conf"))
-        .mkString)
-    .get
-
-  @deprecated
-  private val conf = Configuration().withConf(shieldConf)
-
-  @deprecated
-  private val all = Rules.all(this.getClass.getClassLoader)
 
   val allSemanticRules = List(ZioShieldNoFutureMethods,
                               ZioShieldNoIgnoredExpressions,
