@@ -1,9 +1,15 @@
 package zio.shield.sbt
 
+import java.io.FileNotFoundException
+import java.nio.file.Paths
+
 import sbt.Keys._
 import sbt.plugins.JvmPlugin
 import sbt.{Def, _}
+import zio.shield.config.{Config => ZioShieldConfig}
 import zio.shield.{ZioShield, ZioShieldDiagnostic}
+
+import scala.util.Try
 
 object ZioShieldPlugin extends AutoPlugin {
   override def trigger: PluginTrigger = allRequirements
@@ -14,15 +20,11 @@ object ZioShieldPlugin extends AutoPlugin {
       taskKey[Unit]("Run ZIO Shield")
     val shieldFatalWarnings: SettingKey[Boolean] =
       settingKey[Boolean](
-        "Make all lint and patch warnings fatal, e.g. throwing error instead of warning"
+        "Make all lint and patch warnings fatal, e.g. throwing error instead of warning."
       )
-    val excludedRules: SettingKey[List[String]] =
-      settingKey[List[String]](
-        "Exclude specific rules from code analysis"
-      )
-    val excludedInferrers: SettingKey[List[String]] =
-      settingKey[List[String]](
-        "Exclude specific tag inferrers from code analysis. It can cause excluding dependent rules."
+    val shieldConfigPath: SettingKey[Option[String]] =
+      settingKey[Option[String]](
+        "Relative path to ZIO Shield config. By default is \".shield\" in the project root."
       )
 
     def shieldConfigSettings(config: Configuration): Seq[Def.Setting[_]] =
@@ -34,9 +36,8 @@ object ZioShieldPlugin extends AutoPlugin {
   import autoImport._
 
   override def globalSettings: Seq[Def.Setting[_]] = Seq(
-    shieldFatalWarnings := false,
-    excludedRules := List.empty,
-    excludedInferrers := List.empty
+    shieldConfigPath := Some(".shield"),
+    shieldFatalWarnings := false
   )
 
   override def projectSettings: Seq[Def.Setting[_]] =
@@ -53,7 +54,27 @@ object ZioShieldPlugin extends AutoPlugin {
     Def.task {
       val log = streams.value.log
 
-      excludedRules.value.foreach { er =>
+      val pathStr = shieldConfigPath.value.getOrElse(".shield")
+
+      log.info(s"""Reading ZIO Shield config from "$pathStr"""")
+
+      val configE = for {
+        path <- Try { baseDirectory.value.toPath.resolve(Paths.get(pathStr)) }.toEither
+        config <- ZioShieldConfig.fromFile(path)
+      } yield config
+
+      val zioShieldConfig = configE match {
+        case Left(_: FileNotFoundException)
+            if (shieldConfigPath.value.isEmpty) =>
+          ZioShieldConfig.empty
+        case Left(err) =>
+          log.error(s"Error while loading config: $err")
+          ZioShieldConfig.empty
+        case Right(c) =>
+          c
+      }
+
+      zioShieldConfig.excludedRules.foreach { er =>
         if (ZioShield.allSemanticRules.exists(_.name.value == er)) {
           log.warn(
             s""""$er" is not a supported rule, no rule will be excluded""")
@@ -62,10 +83,9 @@ object ZioShieldPlugin extends AutoPlugin {
 
       // TODO add check for inferrers
 
-      val zioShield =
-        ZioShield(scalacOptions.in(config).value.toList,
-                  fullClasspath.value.map(_.data.toPath).toList)
-          .withExcluded(excludedRules.value, excludedInferrers.value)
+      val zioShield = ZioShield(
+        SbtSemanticDocumentLoader(fullClasspath.value.map(_.data.toPath).toList)
+      ).withConfig(zioShieldConfig)
 
       val files = unmanagedSources.in(config).value.map(_.toPath).toList
 

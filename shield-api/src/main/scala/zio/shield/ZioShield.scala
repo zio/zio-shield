@@ -4,7 +4,6 @@ import java.nio.file.Path
 
 import scalafix.internal.v1.Rules
 import scalafix.lint.RuleDiagnostic
-import scalafix.shield.ZioShieldExtension
 import scalafix.v1._
 import zio.shield.config.Config
 import zio.shield.flow._
@@ -12,8 +11,12 @@ import zio.shield.rules._
 
 import scala.collection.mutable
 
-class ZioShield private (val semanticDbTargetRoot: Option[String],
-                         val fullClasspath: List[Path]) {
+trait SemanticDocumentLoader {
+  def load(synDoc: SyntacticDocument,
+           path: Path): Either[Throwable, SemanticDocument]
+}
+
+class ZioShield private (val loader: SemanticDocumentLoader) {
 
   val flowCache: FlowCache = FlowCache.empty
 
@@ -48,7 +51,7 @@ class ZioShield private (val semanticDbTargetRoot: Option[String],
     withExcluded(config.excludedRules, config.excludedInferrers)
 }
 
-class ConfiguredZioShield(val zioShieldConfig: ZioShield,
+class ConfiguredZioShield(val zioShield: ZioShield,
                           val syntacticRules: Rules,
                           val semanticRules: Rules) {
 
@@ -56,10 +59,6 @@ class ConfiguredZioShield(val zioShieldConfig: ZioShield,
     mutable.HashMap.empty
   private val semDocs: mutable.Map[Path, SemanticDocument] =
     mutable.HashMap.empty
-
-  private val zioShieldExtension = new ZioShieldExtension(
-    zioShieldConfig.fullClasspath,
-    zioShieldConfig.semanticDbTargetRoot)
 
   lazy val inferrers: List[FlowInferrer[_]] =
     semanticRules.rules
@@ -80,7 +79,7 @@ class ConfiguredZioShield(val zioShieldConfig: ZioShield,
     inputs.foreach { i =>
       val path = i.path.toNIO
       val synDoc = synDocs(path)
-      zioShieldExtension.semanticDocumentFromPath(
+      zioShield.loader.load(
         synDoc,
         i.path.toNIO,
       ) match {
@@ -90,12 +89,12 @@ class ConfiguredZioShield(val zioShieldConfig: ZioShield,
       }
     }
 
-    zioShieldConfig.flowCache.update(
+    zioShield.flowCache.update(
       files.flatMap(f => semDocs.get(f).map(f -> _)).toMap)
-    zioShieldConfig.flowCache.deepInferAndCache(inferrers)(files)
+    zioShield.flowCache.deepInferAndCache(inferrers)(files)
   }
 
-  def cacheStats: FlowCache.Stats = zioShieldConfig.flowCache.stats
+  def cacheStats: FlowCache.Stats = zioShield.flowCache.stats
 
   def run(files: List[Path])(
       onDiagnostic: ZioShieldDiagnostic => Unit): Unit = {
@@ -140,13 +139,7 @@ class ConfiguredZioShield(val zioShieldConfig: ZioShield,
 
 object ZioShield {
 
-  def apply(semanticDbTargetRoot: Option[String],
-            fullClasspath: List[Path]): ZioShield =
-    new ZioShield(semanticDbTargetRoot, fullClasspath)
-
-  def apply(scalacOptions: List[String], fullClasspath: List[Path]): ZioShield =
-    new ZioShield(ZioShieldExtension.semanticdbTargetRoot(scalacOptions),
-                  fullClasspath)
+  def apply(loader: SemanticDocumentLoader): ZioShield = new ZioShield(loader)
 
   val allSemanticRules = List(ZioShieldNoFutureMethods,
                               ZioShieldNoIgnoredExpressions,
