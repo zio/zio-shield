@@ -7,6 +7,7 @@ import sbt.Keys._
 import sbt.plugins.JvmPlugin
 import sbt.{Def, _}
 import zio.shield.config.{Config => ZioShieldConfig}
+import zio.shield.semdocs.DirectSemanticDocumentLoader
 import zio.shield.{ZioShield, ZioShieldDiagnostic}
 
 import scala.util.Try

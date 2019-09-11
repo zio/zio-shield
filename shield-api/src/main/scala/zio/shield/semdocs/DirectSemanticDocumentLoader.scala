@@ -1,4 +1,4 @@
-package zio.shield.sbt
+package zio.shield.semdocs
 
 import java.nio.file.Path
 
@@ -12,5 +12,6 @@ case class DirectSemanticDocumentLoader(fullClasspath: List[Path])
   private val extension = new ZioShieldScalafixExtension(fullClasspath)
 
   def load(synDoc: SyntacticDocument,
-           path: Path): Either[Throwable, SemanticDocument] = extension.semanticDocumentFromPath(synDoc, path)
+           path: Path): Either[Throwable, SemanticDocument] =
+    extension.semanticDocumentFromPath(synDoc, path)
 }

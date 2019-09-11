@@ -39,7 +39,7 @@ lazy val shieldSbt = (project in file("shield-sbt"))
   )
 
 lazy val shieldTests = (project in file("shield-tests"))
-  .dependsOn(shieldSbt) // for direct semantic document loading
+  .dependsOn(shieldApi) // for direct semantic document loading
   .settings(
     moduleName := "zio-tests",
     libraryDependencies ++= Seq(

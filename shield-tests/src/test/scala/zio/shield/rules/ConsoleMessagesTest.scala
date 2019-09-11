@@ -5,7 +5,7 @@ import java.nio.file.{Files, Path, Paths}
 import scalafix.v1.Rule
 import utest._
 import zio.shield.flow.FlowCache
-import zio.shield.sbt.DirectSemanticDocumentLoader
+import zio.shield.semdocs.DirectSemanticDocumentLoader
 import zio.shield.{ConfiguredZioShield, ZioShield, ZioShieldDiagnostic}
 
 import scala.collection.mutable
