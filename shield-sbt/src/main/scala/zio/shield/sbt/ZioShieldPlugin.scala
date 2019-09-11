@@ -36,7 +36,7 @@ object ZioShieldPlugin extends AutoPlugin {
   import autoImport._
 
   override def globalSettings: Seq[Def.Setting[_]] = Seq(
-    shieldConfigPath := Some(".shield"),
+    shieldConfigPath := None,
     shieldFatalWarnings := false
   )
 
@@ -54,7 +54,7 @@ object ZioShieldPlugin extends AutoPlugin {
     Def.task {
       val log = streams.value.log
 
-      val pathStr = shieldConfigPath.value.getOrElse(".shield")
+      val pathStr = shieldConfigPath.value.getOrElse(".shield.yaml")
 
       log.info(s"""Reading ZIO Shield config from "$pathStr"""")
 
@@ -84,7 +84,7 @@ object ZioShieldPlugin extends AutoPlugin {
       // TODO add check for inferrers
 
       val zioShield = ZioShield(
-        SbtSemanticDocumentLoader(fullClasspath.value.map(_.data.toPath).toList)
+        DirectSemanticDocumentLoader(fullClasspath.value.map(_.data.toPath).toList)
       ).withConfig(zioShieldConfig)
 
       val files = unmanagedSources.in(config).value.map(_.toPath).toList

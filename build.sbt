@@ -22,14 +22,8 @@ lazy val shieldApi = (project in file("shield-api"))
       scaluzzi,
       circeCore,
       circeGeneric,
-      circeYaml,
-      utest % "test",
-      zio % "test",
-      compilerPlugin(
-        "org.scalameta" % "semanticdb-scalac" % "4.1.0" cross CrossVersion.full)
-    ),
-    scalacOptions += "-Yrangepos",
-    testFrameworks += new TestFramework("utest.runner.Framework"),
+      circeYaml
+    )
   )
 
 lazy val shieldSbt = (project in file("shield-sbt"))
@@ -42,4 +36,18 @@ lazy val shieldSbt = (project in file("shield-sbt"))
       "-Xmx2048M",
       s"-Dplugin.version=${version.value}"
     )
+  )
+
+lazy val shieldTests = (project in file("shield-tests"))
+  .dependsOn(shieldSbt) // for direct semantic document loading
+  .settings(
+    moduleName := "zio-tests",
+    libraryDependencies ++= Seq(
+      utest % "test",
+      zio % "test",
+      compilerPlugin(
+        "org.scalameta" % "semanticdb-scalac" % "4.1.0" cross CrossVersion.full)
+    ),
+    scalacOptions += "-Yrangepos",
+    testFrameworks += new TestFramework("utest.runner.Framework"),
   )

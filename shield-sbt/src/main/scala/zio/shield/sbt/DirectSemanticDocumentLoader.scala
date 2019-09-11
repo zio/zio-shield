@@ -6,7 +6,7 @@ import scalafix.shield.ZioShieldScalafixExtension
 import scalafix.v1.{SemanticDocument, SyntacticDocument}
 import zio.shield.SemanticDocumentLoader
 
-case class SbtSemanticDocumentLoader(fullClasspath: List[Path])
+case class DirectSemanticDocumentLoader(fullClasspath: List[Path])
     extends SemanticDocumentLoader {
 
   private val extension = new ZioShieldScalafixExtension(fullClasspath)

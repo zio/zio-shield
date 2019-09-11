@@ -2,21 +2,22 @@ package zio.shield.rules
 
 import scalafix.internal.scaluzzi.Disable.ContextTraverser
 import scalafix.v1._
+
+import scala.annotation.tailrec
 import scala.meta._
 
 class ZioBlockDetector private (
-    outsideBlock: PartialFunction[Tree, List[Patch]])(
-    implicit doc: SemanticDocument) {
+    outsideBlock: PartialFunction[Tree, List[Patch]])(implicit doc: SemanticDocument) {
 
   import ZioBlockDetector._
 
-  def traverse(tree: meta.Tree): Patch = {
+  def traverse(tree: meta.Tree, ignoreInZioBlocks: Boolean = true): Patch = {
     new ContextTraverser[List[Patch], Boolean](false)({
       case (_: Import, _) => Right(false)
       case (Term.Apply(
               Term.Select(safeBlocksMatcher(block), Term.Name("apply")),
               _),
-            _) =>
+            _) if ignoreInZioBlocks =>
         Right(true) // <Block>.apply
       case (Term.Apply(safeBlocksMatcher(block), _), _) =>
         Right(true) // <Block>(...)
@@ -68,8 +69,8 @@ object ZioBlockDetector {
       lintMessage: PartialFunction[Symbol, String])(
       implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
 
+    @tailrec
     def skipTermSelect(term: Term): Boolean = term match {
-      case _: Import    => false
       case _: Term.Name      => true
       case Term.Select(q, _) => skipTermSelect(q)
       case _                 => false

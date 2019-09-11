@@ -5,6 +5,7 @@ import java.nio.file.{Files, Path, Paths}
 import scalafix.v1.Rule
 import utest._
 import zio.shield.flow.FlowCache
+import zio.shield.sbt.DirectSemanticDocumentLoader
 import zio.shield.{ConfiguredZioShield, ZioShield, ZioShieldDiagnostic}
 
 import scala.collection.mutable
@@ -32,7 +33,7 @@ object ConsoleMessagesTest extends TestSuite {
       rules: List[Rule],
       zioShieldRules: List[FlowCache => Rule with FlowInferenceDependent],
       path: Path): Unit = {
-    val instance = ZioShield(None, fullClasspath)
+    val instance = ZioShield(DirectSemanticDocumentLoader(fullClasspath))
       .apply(semanticRules = rules, semanticZioShieldRules = zioShieldRules)
     runWithInstance(instance, path)
   }
@@ -44,12 +45,6 @@ object ConsoleMessagesTest extends TestSuite {
 
   def consoleMessageTest(rule: Rule, path: Path): Unit =
     consoleMessageTest(List(rule), List.empty, path)
-
-  def consoleMessageTest(rules: List[Rule], path: Path): Unit = {
-    val instance =
-      ZioShield(None, fullClasspath).apply(semanticRules = rules)
-    runWithInstance(instance, path)
-  }
 
   private def runWithInstance(zioShieldInstance: ConfiguredZioShield,
                               path: Path): Unit = {
@@ -113,11 +108,11 @@ object ConsoleMessagesTest extends TestSuite {
 
     def autoSrcPath(implicit utestPath: utest.framework.TestPath) =
       testsPath.resolve(
-        s"shield-api/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}.scala")
+        s"shield-tests/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}.scala")
 
     def autoDirPath(implicit utestPath: utest.framework.TestPath) =
       testsPath.resolve(
-        s"shield-api/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}")
+        s"shield-tests/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}")
 
     test("ZioShieldNoFutureMethodsExample") {
       consoleMessageTest(ZioShieldNoFutureMethods, autoSrcPath)

@@ -16,6 +16,6 @@ object ZioShieldNoReflection extends SemanticRule("ZioShieldNoReflection") {
           case _ => "java reflection"
         }
 
-    doc.tree.collect(pf).asPatch
+    ZioBlockDetector.fromSingleLintPerTree(pf).traverse(doc.tree, ignoreInZioBlocks = false)
   }
 }
