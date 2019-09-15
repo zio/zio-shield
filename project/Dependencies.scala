@@ -12,4 +12,5 @@ object Dependencies {
   lazy val circeYaml = "io.circe" %% "circe-yaml" % "0.10.0"
   lazy val circeCore =  "io.circe" %% "circe-core" % circeVersion
   lazy val circeGeneric =  "io.circe" %% "circe-generic" % circeVersion
+  lazy val circeGenericExtras =  "io.circe" %% "circe-generic-extras" % circeVersion
 }

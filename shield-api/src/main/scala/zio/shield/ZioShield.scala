@@ -5,7 +5,7 @@ import java.nio.file.Path
 import scalafix.internal.v1.Rules
 import scalafix.lint.RuleDiagnostic
 import scalafix.v1._
-import zio.shield.config.Config
+import zio.shield.config.{Config, InvalidConfig}
 import zio.shield.flow._
 import zio.shield.rules._
 
@@ -18,42 +18,41 @@ trait SemanticDocumentLoader {
 
 class ZioShield private (val loader: SemanticDocumentLoader) {
 
-  val flowCache: FlowCache = FlowCache.empty
-
-  private[shield] def apply(syntacticRules: List[Rule] = List.empty,
-                            semanticRules: List[Rule] = List.empty,
-                            semanticZioShieldRules: List[
-                              FlowCache => Rule with FlowInferenceDependent] =
-                              List.empty): ConfiguredZioShield =
-    new ConfiguredZioShield(
-      this,
-      Rules(syntacticRules),
-      Rules(semanticRules ++ semanticZioShieldRules.map(_(flowCache))))
-
   def withExcluded(
       excludedRules: List[String] = List.empty,
-      excludedInferrers: List[String] = List.empty): ConfiguredZioShield =
-    apply(
-      List.empty,
-      ZioShield.allSemanticRules.filterNot {
-        case flowDependent: FlowInferenceDependent =>
-          excludedInferrers.exists(ei =>
-            flowDependent.dependsOn.exists(_.name == ei)) ||
-            excludedRules.contains(flowDependent.name.value)
-        case r => excludedRules.contains(r.name.value)
-      }
-    )
+      excludedInferrers: List[String] = List.empty): ConfiguredZioShield = {
+
+    val filteredSemanticRules = ZioShield.allSemanticRules.filterNot(r =>
+      excludedRules.contains(r.name.value))
+    val filteredFlowRules = ZioShield.allFlowRules.filterNot(
+      r =>
+        excludedInferrers.exists(ei => r.dependsOn.exists(_.name == ei)) ||
+          excludedRules.contains(r.name))
+
+    ConfiguredZioShield(loader)(List.empty,
+                                filteredSemanticRules,
+                                filteredFlowRules)
+  }
 
   def withAllRules(): ConfiguredZioShield =
-    apply(List.empty, ZioShield.allSemanticRules, ZioShield.allZioShieldRules)
+    ConfiguredZioShield(loader)(List.empty,
+                                ZioShield.allSemanticRules,
+                                ZioShield.allFlowRules)
 
   def withConfig(config: Config): ConfiguredZioShield =
     withExcluded(config.excludedRules, config.excludedInferrers)
 }
 
-class ConfiguredZioShield(val zioShield: ZioShield,
-                          val syntacticRules: Rules,
-                          val semanticRules: Rules) {
+final case class ConfiguredZioShield(loader: SemanticDocumentLoader)(
+    syntacticRules: List[Rule],
+    semanticRules: List[Rule],
+    flowRules: List[FlowRule]) {
+
+  private val flowCache: FlowCache = FlowCache.empty
+
+  private val combinedSyntacticRules = Rules(syntacticRules)
+  private val combinedSemanticRules = Rules(
+    semanticRules ++ flowRules.map(_.toRule(flowCache)))
 
   private val synDocs: mutable.Map[Path, SyntacticDocument] =
     mutable.HashMap.empty
@@ -61,12 +60,7 @@ class ConfiguredZioShield(val zioShield: ZioShield,
     mutable.HashMap.empty
 
   lazy val inferrers: List[FlowInferrer[_]] =
-    semanticRules.rules
-      .collect {
-        case flowDependent: FlowInferenceDependent => flowDependent.dependsOn
-      }
-      .flatten
-      .distinct
+    flowRules.flatMap(_.dependsOn).distinct
 
   def updateCache(files: List[Path])(
       onDiagnostic: ZioShieldDiagnostic => Unit): Unit = {
@@ -79,7 +73,7 @@ class ConfiguredZioShield(val zioShield: ZioShield,
     inputs.foreach { i =>
       val path = i.path.toNIO
       val synDoc = synDocs(path)
-      zioShield.loader.load(
+      loader.load(
         synDoc,
         i.path.toNIO,
       ) match {
@@ -89,12 +83,11 @@ class ConfiguredZioShield(val zioShield: ZioShield,
       }
     }
 
-    zioShield.flowCache.update(
-      files.flatMap(f => semDocs.get(f).map(f -> _)).toMap)
-    zioShield.flowCache.deepInferAndCache(inferrers)(files)
+    flowCache.update(files.flatMap(f => semDocs.get(f).map(f -> _)).toMap)
+    flowCache.deepInferAndCache(inferrers)(files)
   }
 
-  def cacheStats: FlowCache.Stats = zioShield.flowCache.stats
+  def cacheStats: FlowCache.Stats = flowCache.stats
 
   def run(files: List[Path])(
       onDiagnostic: ZioShieldDiagnostic => Unit): Unit = {
@@ -119,7 +112,7 @@ class ConfiguredZioShield(val zioShield: ZioShield,
       synDocs.get(path) match {
         case Some(synDoc) =>
           val (newDoc, msgs) =
-            syntacticRules.syntacticPatch(synDoc, suppress = false)
+            combinedSyntacticRules.syntacticPatch(synDoc, suppress = false)
           patch(input.text, newDoc, path).foreach(onDiagnostic)
           msgs.foreach(m => onDiagnostic(lint(path, m)))
         case None =>
@@ -128,7 +121,7 @@ class ConfiguredZioShield(val zioShield: ZioShield,
       semDocs.get(path) match {
         case Some(semDoc) =>
           val (newDoc, msgs) =
-            semanticRules.semanticPatch(semDoc, suppress = false)
+            combinedSemanticRules.semanticPatch(semDoc, suppress = false)
           patch(input.text, newDoc, path).foreach(onDiagnostic)
           msgs.foreach(m => onDiagnostic(lint(path, m)))
         case None =>
@@ -146,11 +139,42 @@ object ZioShield {
                               ZioShieldNoReflection,
                               ZioShieldNoTypeCasting)
 
-  val allZioShieldRules: List[FlowCache => Rule with FlowInferenceDependent] =
+  val allFlowRules: List[FlowRule] =
     List(
-      new ZioShieldNoImpurity(_),
-      new ZioShieldNoIndirectUse(_),
-      new ZioShieldNoNull(_),
-      new ZioShieldNoPartial(_)
+      ZioShieldNoImpurity,
+      ZioShieldNoIndirectUse,
+      ZioShieldNoNull,
+      ZioShieldNoPartial
     )
+
+  val allInferrers: List[FlowInferrer[_]] = List(EffectfullInferrer,
+                                                 ImplementationInferrer,
+                                                 ImpurityInferrer,
+                                                 NullabilityInferrer,
+                                                 PartialityInferrer,
+                                                 PureInterfaceInferrer)
+
+  def validateConfig(config: Config): Option[Throwable] = {
+    val invalidRules = config.excludedRules.filterNot(
+      r =>
+        allSemanticRules.exists(_.name.value == r) ||
+          allFlowRules.exists(_.name == r))
+
+    val invalidInferrers =
+      config.excludedInferrers.filterNot(i => allInferrers.exists(_.name == i))
+
+    if (invalidRules.nonEmpty || invalidInferrers.nonEmpty) {
+      val msg = List(
+        if (invalidRules.nonEmpty)
+          Some(s"invalid rules: ${invalidRules.mkString(", ")}")
+        else None,
+        if (invalidInferrers.nonEmpty)
+          Some(s"invalid inferrers: ${invalidInferrers.mkString(", ")}")
+        else None,
+      ).flatten.mkString(", ")
+      Some(new InvalidConfig(msg))
+    } else {
+      None
+    }
+  }
 }

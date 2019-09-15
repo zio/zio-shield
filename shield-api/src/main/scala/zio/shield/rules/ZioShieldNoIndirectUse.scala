@@ -8,11 +8,16 @@ import zio.shield.utils.SymbolInformationOps
 
 import scala.meta._
 
-class ZioShieldNoIndirectUse(cache: FlowCache)
-    extends SemanticRule("ZioShieldNoIndirectUse")
-    with FlowInferenceDependent {
+object ZioShieldNoIndirectUse extends FlowRule {
+  val name = "ZioShieldNoIndirectUse"
 
-  override def fix(implicit doc: SemanticDocument): Patch = {
+  val dependsOn = List(
+    PureInterfaceInferrer,
+    ImplementationInferrer,
+    EffectfullInferrer
+  )
+
+  def fix(cache: FlowCache)(implicit doc: SemanticDocument): Patch = {
 
     def pureInterfaceOrImplementationParents(symbol: Symbol): List[String] =
       symbol.info
@@ -52,10 +57,4 @@ class ZioShieldNoIndirectUse(cache: FlowCache)
         Left(noEffectful(t))
     }).result(doc.tree).asPatch
   }
-
-  def dependsOn: List[FlowInferrer[_]] = List(
-    PureInterfaceInferrer,
-    ImplementationInferrer,
-    EffectfullInferrer
-  )
 }

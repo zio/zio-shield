@@ -6,10 +6,12 @@ import zio.shield.tag.Tag
 
 import scala.meta._
 
-class ZioShieldNoPartial(cache: FlowCache)
-    extends SemanticRule("ZioShieldNoPartial") with FlowInferenceDependent {
+object ZioShieldNoPartial extends FlowRule {
+  val name = "ZioShieldNoPartial"
 
-  override def fix(implicit doc: SemanticDocument): Patch = {
+  val dependsOn = List(PartialityInferrer)
+
+  def fix(cache: FlowCache)(implicit doc: SemanticDocument): Patch = {
 
     val pf: PartialFunction[Tree, Patch] =
       ZioBlockDetector.lintFunction(s =>
@@ -24,6 +26,4 @@ class ZioShieldNoPartial(cache: FlowCache)
 
     ZioBlockDetector.fromSingleLintPerTree(pf).traverse(doc.tree)
   }
-
-  def dependsOn: List[FlowInferrer[_]] = List(PartialityInferrer)
 }

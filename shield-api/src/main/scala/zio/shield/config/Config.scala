@@ -5,7 +5,8 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 
 import io.circe.Decoder
-import io.circe.generic.semiauto._
+import io.circe.generic.extras.Configuration
+import io.circe.generic.extras.semiauto._
 import io.circe.yaml.parser
 
 import scala.util.Try
@@ -15,7 +16,12 @@ case class Config(excludedRules: List[String] = List.empty,
                   excludedInferrers: List[String] = List.empty)
 
 object Config {
-  implicit val configDecoder: Decoder[Config] = deriveDecoder
+
+  implicit val configDecoder: Decoder[Config] = {
+    implicit val customConfig: Configuration =
+      Configuration.default.withDefaults
+    deriveDecoder
+  }
 
   lazy val empty: Config = Config()
 
@@ -26,10 +32,15 @@ object Config {
       for {
         str <- Try {
           new String(Files.readAllBytes(path), StandardCharsets.UTF_8)
-          }.toEither
-        json <- parser.parse(str)
-        config <- json.as[Config]
+        }.toEither
+        config <- fromString(str)
       } yield config
     }
   }
+
+  def fromString(str: String): Either[Throwable, Config] =
+    for {
+      json <- parser.parse(str)
+      config <- json.as[Config]
+    } yield config
 }

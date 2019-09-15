@@ -4,7 +4,6 @@ import java.nio.file.{Files, Path, Paths}
 
 import scalafix.v1.Rule
 import utest._
-import zio.shield.flow.FlowCache
 import zio.shield.semdocs.DirectSemanticDocumentLoader
 import zio.shield.{ConfiguredZioShield, ZioShield, ZioShieldDiagnostic}
 
@@ -29,25 +28,22 @@ object ConsoleMessagesTest extends TestSuite {
 
   val verbose = true
 
-  def consoleMessageTest(
-      rules: List[Rule],
-      zioShieldRules: List[FlowCache => Rule with FlowInferenceDependent],
-      path: Path): Unit = {
-    val instance = ZioShield(DirectSemanticDocumentLoader(fullClasspath))
-      .apply(semanticRules = rules, semanticZioShieldRules = zioShieldRules)
-    runWithInstance(instance, path)
+  def consoleMessageTest(rules: List[Rule],
+                         flowRules: List[FlowRule],
+                         path: Path): Unit = {
+    val zioShield = ConfiguredZioShield(
+      DirectSemanticDocumentLoader(fullClasspath))(List.empty, rules, flowRules)
+    runWithZioShield(zioShield, path)
   }
 
-  def consoleMessageTest(
-      zioShieldRule: FlowCache => Rule with FlowInferenceDependent,
-      path: Path): Unit =
-    consoleMessageTest(List.empty, List(zioShieldRule), path)
+  def consoleMessageTest(flowRule: FlowRule, path: Path): Unit =
+    consoleMessageTest(List.empty, List(flowRule), path)
 
   def consoleMessageTest(rule: Rule, path: Path): Unit =
     consoleMessageTest(List(rule), List.empty, path)
 
-  private def runWithInstance(zioShieldInstance: ConfiguredZioShield,
-                              path: Path): Unit = {
+  private def runWithZioShield(zioShield: ConfiguredZioShield,
+                               path: Path): Unit = {
     val (parent, name, srcPaths) = if (Files.isDirectory(path)) {
       import scala.collection.JavaConverters._
       (path,
@@ -67,8 +63,8 @@ object ConsoleMessagesTest extends TestSuite {
     val consoleMessages = {
       val diagnostics = mutable.Buffer[ZioShieldDiagnostic]()
 
-      zioShieldInstance.updateCache(srcPaths)(diagnostics += _)
-      zioShieldInstance.run(srcPaths)(diagnostics += _)
+      zioShield.updateCache(srcPaths)(diagnostics += _)
+      zioShield.run(srcPaths)(diagnostics += _)
 
       diagnostics
         .sortWith {
@@ -121,16 +117,16 @@ object ConsoleMessagesTest extends TestSuite {
       consoleMessageTest(ZioShieldNoIgnoredExpressions, autoSrcPath)
     }
     test("noImpurity") {
-      consoleMessageTest(fc => new ZioShieldNoImpurity(fc), autoDirPath)
+      consoleMessageTest(ZioShieldNoImpurity, autoDirPath)
     }
     test("noPartial") {
-      consoleMessageTest(fc => new ZioShieldNoPartial(fc), autoDirPath)
+      consoleMessageTest(ZioShieldNoPartial, autoDirPath)
     }
     test("noNull") {
-      consoleMessageTest(fc => new ZioShieldNoNull(fc), autoDirPath)
+      consoleMessageTest(ZioShieldNoNull, autoDirPath)
     }
     test("noIndirectUse") {
-      consoleMessageTest(fc => new ZioShieldNoIndirectUse(fc), autoDirPath)
+      consoleMessageTest(ZioShieldNoIndirectUse, autoDirPath)
     }
     test("ZioShieldNoTypeCastingExample") {
       consoleMessageTest(ZioShieldNoTypeCasting, autoSrcPath)
@@ -140,7 +136,7 @@ object ConsoleMessagesTest extends TestSuite {
     }
     test("ZioShieldShowcase") {
       consoleMessageTest(ZioShield.allSemanticRules,
-                         ZioShield.allZioShieldRules,
+                         ZioShield.allFlowRules,
                          autoSrcPath)
     }
   }

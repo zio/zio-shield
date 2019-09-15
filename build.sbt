@@ -22,8 +22,11 @@ lazy val shieldApi = (project in file("shield-api"))
       scaluzzi,
       circeCore,
       circeGeneric,
-      circeYaml
-    )
+      circeGenericExtras,
+      circeYaml,
+      utest % "test"
+    ),
+    testFrameworks += new TestFramework("utest.runner.Framework")
   )
 
 lazy val shieldSbt = (project in file("shield-sbt"))
@@ -49,5 +52,5 @@ lazy val shieldTests = (project in file("shield-tests"))
         "org.scalameta" % "semanticdb-scalac" % "4.1.0" cross CrossVersion.full)
     ),
     scalacOptions += "-Yrangepos",
-    testFrameworks += new TestFramework("utest.runner.Framework"),
+    testFrameworks += new TestFramework("utest.runner.Framework")
   )
