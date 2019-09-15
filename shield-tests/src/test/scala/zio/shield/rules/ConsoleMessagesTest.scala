@@ -4,7 +4,7 @@ import java.nio.file.{Files, Path, Paths}
 
 import scalafix.v1.Rule
 import utest._
-import zio.shield.flow.FlowCache
+import zio.shield.semdocs.DirectSemanticDocumentLoader
 import zio.shield.{ConfiguredZioShield, ZioShield, ZioShieldDiagnostic}
 
 import scala.collection.mutable
@@ -28,22 +28,22 @@ object ConsoleMessagesTest extends TestSuite {
 
   val verbose = true
 
-  def consoleMessageTest(
-      zioShieldRule: FlowCache => Rule with FlowInferenceDependent,
-      path: Path): Unit = {
-    val instance = ZioShield(None, fullClasspath).apply(
-      semanticZioShieldRules = List(zioShieldRule))
-    runWithInstance(instance, path)
+  def consoleMessageTest(rules: List[Rule],
+                         flowRules: List[FlowRule],
+                         path: Path): Unit = {
+    val zioShield = ConfiguredZioShield(
+      DirectSemanticDocumentLoader(fullClasspath))(List.empty, rules, flowRules)
+    runWithZioShield(zioShield, path)
   }
 
-  def consoleMessageTest(rule: Rule, path: Path): Unit = {
-    val instance =
-      ZioShield(None, fullClasspath).apply(semanticRules = List(rule))
-    runWithInstance(instance, path)
-  }
+  def consoleMessageTest(flowRule: FlowRule, path: Path): Unit =
+    consoleMessageTest(List.empty, List(flowRule), path)
 
-  private def runWithInstance(zioShieldInstance: ConfiguredZioShield,
-                              path: Path): Unit = {
+  def consoleMessageTest(rule: Rule, path: Path): Unit =
+    consoleMessageTest(List(rule), List.empty, path)
+
+  private def runWithZioShield(zioShield: ConfiguredZioShield,
+                               path: Path): Unit = {
     val (parent, name, srcPaths) = if (Files.isDirectory(path)) {
       import scala.collection.JavaConverters._
       (path,
@@ -63,8 +63,8 @@ object ConsoleMessagesTest extends TestSuite {
     val consoleMessages = {
       val diagnostics = mutable.Buffer[ZioShieldDiagnostic]()
 
-      zioShieldInstance.updateCache(srcPaths)(diagnostics += _)
-      zioShieldInstance.run(srcPaths)(diagnostics += _)
+      zioShield.updateCache(srcPaths)(diagnostics += _)
+      zioShield.run(srcPaths)(diagnostics += _)
 
       diagnostics
         .sortWith {
@@ -104,35 +104,40 @@ object ConsoleMessagesTest extends TestSuite {
 
     def autoSrcPath(implicit utestPath: utest.framework.TestPath) =
       testsPath.resolve(
-        s"shield-api/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}Example.scala")
+        s"shield-tests/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}.scala")
 
     def autoDirPath(implicit utestPath: utest.framework.TestPath) =
       testsPath.resolve(
-        s"shield-api/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}")
+        s"shield-tests/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}")
 
-    test("ZioShieldNoFutureMethods") {
+    test("ZioShieldNoFutureMethodsExample") {
       consoleMessageTest(ZioShieldNoFutureMethods, autoSrcPath)
     }
-    test("ZioShieldNoIgnoredExpressions") {
+    test("ZioShieldNoIgnoredExpressionsExample") {
       consoleMessageTest(ZioShieldNoIgnoredExpressions, autoSrcPath)
     }
     test("noImpurity") {
-      consoleMessageTest(fc => new ZioShieldNoImpurity(fc), autoDirPath)
+      consoleMessageTest(ZioShieldNoImpurity, autoDirPath)
     }
     test("noPartial") {
-      consoleMessageTest(fc => new ZioShieldNoPartial(fc), autoDirPath)
+      consoleMessageTest(ZioShieldNoPartial, autoDirPath)
     }
     test("noNull") {
-      consoleMessageTest(fc => new ZioShieldNoNull(fc), autoDirPath)
+      consoleMessageTest(ZioShieldNoNull, autoDirPath)
     }
     test("noIndirectUse") {
-      consoleMessageTest(fc => new ZioShieldNoIndirectUse(fc), autoDirPath)
+      consoleMessageTest(ZioShieldNoIndirectUse, autoDirPath)
     }
-    test("ZioShieldNoTypeCasting") {
+    test("ZioShieldNoTypeCastingExample") {
       consoleMessageTest(ZioShieldNoTypeCasting, autoSrcPath)
     }
-    test("ZioShieldNoReflection") {
+    test("ZioShieldNoReflectionExample") {
       consoleMessageTest(ZioShieldNoReflection, autoSrcPath)
+    }
+    test("ZioShieldShowcase") {
+      consoleMessageTest(ZioShield.allSemanticRules,
+                         ZioShield.allFlowRules,
+                         autoSrcPath)
     }
   }
 }

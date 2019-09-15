@@ -6,10 +6,12 @@ import zio.shield.tag.Tag
 
 import scala.meta._
 
-class ZioShieldNoImpurity(cache: FlowCache)
-    extends SemanticRule("ZioShieldNoImpurity") with FlowInferenceDependent {
+object ZioShieldNoImpurity extends FlowRule {
+  val name = "ZioShieldNoImpurity"
 
-  override def fix(implicit doc: SemanticDocument): Patch = {
+  val dependsOn = List(ImpurityInferrer)
+
+  def fix(cache: FlowCache)(implicit doc: SemanticDocument): Patch = {
 
     val pf: PartialFunction[Tree, Patch] =
       ZioBlockDetector.lintFunction(s =>
@@ -19,6 +21,4 @@ class ZioShieldNoImpurity(cache: FlowCache)
 
     ZioBlockDetector.fromSingleLintPerTree(pf).traverse(doc.tree)
   }
-
-  val dependsOn: List[FlowInferrer[_]] = List(ImpurityInferrer)
 }

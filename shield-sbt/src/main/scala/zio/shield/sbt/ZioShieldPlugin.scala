@@ -1,8 +1,12 @@
 package zio.shield.sbt
 
+import java.io.FileNotFoundException
+
 import sbt.Keys._
 import sbt.plugins.JvmPlugin
 import sbt.{Def, _}
+import zio.shield.config.{Config => ZioShieldConfig}
+import zio.shield.semdocs.DirectSemanticDocumentLoader
 import zio.shield.{ZioShield, ZioShieldDiagnostic}
 
 object ZioShieldPlugin extends AutoPlugin {
@@ -14,15 +18,12 @@ object ZioShieldPlugin extends AutoPlugin {
       taskKey[Unit]("Run ZIO Shield")
     val shieldFatalWarnings: SettingKey[Boolean] =
       settingKey[Boolean](
-        "Make all lint and patch warnings fatal, e.g. throwing error instead of warning"
+        "Make all lint and patch warnings fatal, e.g. throwing error instead of warning."
       )
-    val excludedRules: SettingKey[List[String]] =
-      settingKey[List[String]](
-        "Exclude specific rules from code analysis"
-      )
-    val excludedInferrers: SettingKey[List[String]] =
-      settingKey[List[String]](
-        "Exclude specific tag inferrers from code analysis. It can cause excluding dependent rules."
+    val shieldConfig: SettingKey[Option[File]] =
+      settingKey[Option[File]](
+        "Optional location of ZIO Shield config. " +
+          "If not specified config is read from \".shield.yaml\" in the project root."
       )
 
     def shieldConfigSettings(config: Configuration): Seq[Def.Setting[_]] =
@@ -34,9 +35,11 @@ object ZioShieldPlugin extends AutoPlugin {
   import autoImport._
 
   override def globalSettings: Seq[Def.Setting[_]] = Seq(
-    shieldFatalWarnings := false,
-    excludedRules := List.empty,
-    excludedInferrers := List.empty
+    shieldFatalWarnings := false
+  )
+
+  override def buildSettings: Seq[Def.Setting[_]] = Seq(
+    shieldConfig := None
   )
 
   override def projectSettings: Seq[Def.Setting[_]] =
@@ -53,54 +56,60 @@ object ZioShieldPlugin extends AutoPlugin {
     Def.task {
       val log = streams.value.log
 
-      val zioShield =
-        ZioShield(scalacOptions.in(config).value.toList,
-                  fullClasspath.value.map(_.data.toPath).toList).withAllRules()
+      val path = shieldConfig.in(config).value
+        .getOrElse((baseDirectory in ThisBuild).value / ".shield.yaml")
+        .toPath
+      log.info(s"""Reading ZIO Shield config from "${path.toAbsolutePath}"""")
 
-      excludedRules.value.foreach { er =>
-        if (!zioShield.syntacticRules.rules.exists(_.name.value == er) &&
-            !zioShield.semanticRules.rules.exists(_.name.value == er)) {
-          log.warn(
-            s""""$er" is not a supported rule, no rule will be excluded""")
-        }
+      val configE = ZioShieldConfig.fromFile(path)
+      val zioShieldConfig = configE match {
+        case Left(_: FileNotFoundException)
+            if (shieldConfig.in(config).value.isEmpty) =>
+          ZioShieldConfig.empty
+        case Left(err) =>
+          log.error(s"Error while loading config: $err")
+          ZioShieldConfig.empty
+        case Right(c) =>
+          c
       }
 
-      excludedInferrers.value.foreach { ei =>
-        if (!zioShield.inferrers.exists(_.name == ei)) {
-          log.warn(s""""$ei" is not a supported inferrer""")
-        }
+      ZioShield.validateConfig(zioShieldConfig).foreach { t =>
+        log.warn(t.toString)
+        log.warn("Ignoring invalid rules and inferrers.")
       }
 
-      val excludedZioShield =
-        zioShield.exclude(excludedRules.value, excludedInferrers.value)
+      val zioShield = ZioShield(
+        DirectSemanticDocumentLoader(
+          fullClasspath.value.map(_.data.toPath).toList)
+      ).withConfig(zioShieldConfig)
 
-      val files = unmanagedSources.in(config).value.map(_.toPath).toList
+      val files = unmanagedSources.value.map(_.toPath).toList
 
       var isError = false
 
       log.info("Building ZIO Shield cache...")
 
       val onDiagnostic: ZioShieldDiagnostic => Unit = d =>
-        if (shieldFatalWarnings.value) {
+        if (shieldFatalWarnings.in(config).value) {
           isError = true
           log.error(d.consoleMessage)
         } else {
           log.warn(d.consoleMessage)
-        }
+      }
 
-      excludedZioShield.updateCache(files)(onDiagnostic)
+      zioShield.updateCache(files)(onDiagnostic)
 
-      val stats = excludedZioShield.cacheStats
+      val stats = zioShield.cacheStats
 
       log.info(f"""||ZIO Shield Statistics|
-                   ||---------------------|
-                   ||Files: ${stats.filesCount}%14s|
-                   ||Symbols: ${stats.symbolsCount}%12s|
-                   ||Edges: ${stats.edgesCount}%14s|""".stripMargin)
+                       ||---------------------|
+                       ||Files: ${stats.filesCount}%14s|
+                       ||Symbols: ${stats.symbolsCount}%12s|
+                       ||Edges: ${stats.edgesCount}%14s|""".stripMargin)
 
       log.info("Running ZIO Shield...")
 
-      excludedZioShield.run(files)(onDiagnostic)
+      zioShield.run(files)(onDiagnostic)
 
       if (isError) {
         throw new ZioShieldFailed()
