@@ -45,7 +45,7 @@ object ZioShieldPlugin extends AutoPlugin {
   override def projectSettings: Seq[Def.Setting[_]] =
     Seq(
       libraryDependencies ++= Seq(compilerPlugin(
-        "org.scalameta" % "semanticdb-scalac" % "4.1.0" cross CrossVersion.full)),
+        "org.scalameta" % "semanticdb-scalac" % "4.2.3" cross CrossVersion.full)),
       scalacOptions += "-Yrangepos"
     ) ++
       Seq(Compile, Test).flatMap(c => inConfig(c)(shieldConfigSettings(c)))

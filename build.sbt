@@ -2,7 +2,7 @@ import Dependencies._
 
 inThisBuild(
   Seq(
-    scalaVersion := "2.12.8",
+    scalaVersion := scala212,
     organization := "zio.shield",
     licenses := Seq(
       "Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")
@@ -45,11 +45,12 @@ lazy val shieldTests = (project in file("shield-tests"))
   .dependsOn(shieldApi) // for direct semantic document loading
   .settings(
     moduleName := "zio-tests",
+    skip in publish := true,
     libraryDependencies ++= Seq(
       utest % "test",
       zio % "test",
       compilerPlugin(
-        "org.scalameta" % "semanticdb-scalac" % "4.1.0" cross CrossVersion.full)
+        "org.scalameta" % "semanticdb-scalac" % "4.2.3" cross CrossVersion.full)
     ),
     scalacOptions += "-Yrangepos",
     testFrameworks += new TestFramework("utest.runner.Framework")
