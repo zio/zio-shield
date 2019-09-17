@@ -139,8 +139,7 @@ final case class FlowCacheImpl(
       val processingSymbols = mutable.HashSet[String]()
 
       def dfs(symbol: String): Unit = {
-        if (!processingSymbols.contains(symbol) &&
-            (!inferredTags.contains(symbol) || inferredTags(symbol).isEmpty)) {
+        if (!processingSymbols.contains(symbol)) {
           processingSymbols += symbol
           edges.get(symbol).foreach { e =>
             inferrers.foreach { i =>
@@ -148,11 +147,17 @@ final case class FlowCacheImpl(
                 i.dependentSymbols(e).foreach(dfs)
               }
             }
-            if (!inferredTags.contains(symbol))
-              inferredTags(symbol) = mutable.Buffer()
+            var inferredTagsBuffer: mutable.Buffer[TagProp[_]] = null
+            if (!inferredTags.contains(symbol)) {
+              inferredTagsBuffer = mutable.Buffer()
+              inferredTags(symbol) = inferredTagsBuffer
+            } else {
+              inferredTagsBuffer = inferredTags(symbol)
+              inferredTagsBuffer.clear()
+            }
             inferrers.foreach { i =>
               if (i.isInferable(symbol, e)) {
-                inferredTags(symbol) += i.infer(this)(symbol)
+                inferredTagsBuffer += i.infer(this)(symbol)
               }
             }
           }
@@ -163,6 +168,7 @@ final case class FlowCacheImpl(
 
       files.foreach {
         case (symbol, file) if targetFilesSet.contains(file) => dfs(symbol)
+        case _ =>
       }
     }
 
