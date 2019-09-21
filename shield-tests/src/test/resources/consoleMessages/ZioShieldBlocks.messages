@@ -1,0 +1,7 @@
+ZioShieldBlocks.scala:8:7: error: possibly impure
+  def helloWorld(): Unit = println("Hello world!")
+      ^^^^^^^^^^
+---
+ZioShieldBlocks.scala:8:28: error: possibly impure
+  def helloWorld(): Unit = println("Hello world!")
+                           ^^^^^^^

@@ -2,6 +2,7 @@ package zio.shield.flow
 
 import scalafix.v1._
 import zio.shield.rules.ZioBlockDetector
+import zio.shield.tag.TagProof.ContraryProof
 import zio.shield.tag.{Tag, TagProof, TagProp}
 
 import scala.meta._
@@ -10,6 +11,8 @@ case object PureInterfaceInferrer extends FlowInferrer[Tag.PureInterface.type] {
 
   val name: String = toString
 
+  val ignoreParents = List("scala/AnyRef#", "scala/AnyVal#")
+
   def infer(flowCache: FlowCache)(
       symbol: String): TagProp[Tag.PureInterface.type] = {
     val maybeEdge = flowCache.edges.get(symbol)
@@ -17,15 +20,21 @@ case object PureInterfaceInferrer extends FlowInferrer[Tag.PureInterface.type] {
     val effectfulParents = maybeEdge match {
       case Some(ClassTraitEdge(_, parentsTypes, _)) =>
         parentsTypes.filterNot(
-          flowCache.searchTag(Tag.PureInterface)(_).getOrElse(true))
+          t =>
+            flowCache
+              .searchTag(Tag.PureInterface)(t)
+              .getOrElse(true) || ignoreParents.contains(t))
       case _ => List.empty
     }
 
-    val traitPatch = flowCache.trees.get(symbol) match {
-      case Some(t: Defn.Trait) => Patch.empty
+    val traitProof = flowCache.trees.get(symbol) match {
+      case Some(t: Defn.Trait) => None
       case Some(t) =>
-        Patch.lint(Diagnostic("", "not a pure interface: not a trait", t.pos))
-      case None => Patch.empty
+        Some(
+          TagProof.PatchProof(Patch.lint(
+            Diagnostic("", "not a pure interface: not a trait", t.pos))))
+      case None =>
+        Some(ContraryProof)
     }
 
     val constPatch = maybeEdge match {
@@ -51,7 +60,7 @@ case object PureInterfaceInferrer extends FlowInferrer[Tag.PureInterface.type] {
 
     val proofs = List(
       TagProof.SymbolsProof.fromSymbols(effectfulParents),
-      TagProof.PatchProof.fromPatch(traitPatch),
+      traitProof,
       TagProof.PatchProof.fromPatch(constPatch)
     ).flatten
 

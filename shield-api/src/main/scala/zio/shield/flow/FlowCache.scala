@@ -141,25 +141,32 @@ final case class FlowCacheImpl(
       def dfs(symbol: String): Unit = {
         if (!processingSymbols.contains(symbol)) {
           processingSymbols += symbol
-          edges.get(symbol).foreach { e =>
-            inferrers.foreach { i =>
-              if (i.isInferable(symbol, e)) {
-                i.dependentSymbols(e).foreach(dfs)
+          var inferredTagsBuffer: mutable.Buffer[TagProp[_]] = null
+          if (!inferredTags.contains(symbol)) {
+            inferredTagsBuffer = mutable.Buffer()
+            inferredTags(symbol) = inferredTagsBuffer
+          } else {
+            inferredTagsBuffer = inferredTags(symbol)
+            inferredTagsBuffer.clear()
+          }
+
+          edges.get(symbol) match {
+            case Some(e) => // edge
+              inferrers.foreach { i =>
+                if (i.isInferable(symbol, e)) {
+                  i.dependentSymbols(e).foreach(dfs)
+                }
               }
-            }
-            var inferredTagsBuffer: mutable.Buffer[TagProp[_]] = null
-            if (!inferredTags.contains(symbol)) {
-              inferredTagsBuffer = mutable.Buffer()
-              inferredTags(symbol) = inferredTagsBuffer
-            } else {
-              inferredTagsBuffer = inferredTags(symbol)
-              inferredTagsBuffer.clear()
-            }
-            inferrers.foreach { i =>
-              if (i.isInferable(symbol, e)) {
+
+              inferrers.foreach { i =>
+                if (i.isInferable(symbol, e)) {
+                  inferredTagsBuffer += i.infer(this)(symbol)
+                }
+              }
+            case None => // leaf symbol
+              inferrers.foreach { i =>
                 inferredTagsBuffer += i.infer(this)(symbol)
               }
-            }
           }
         }
       }

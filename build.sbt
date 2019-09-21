@@ -49,6 +49,7 @@ lazy val shieldTests = (project in file("shield-tests"))
     libraryDependencies ++= Seq(
       utest % "test",
       zio % "test",
+      zioStreams % "test",
       compilerPlugin(
         "org.scalameta" % "semanticdb-scalac" % "4.2.3" cross CrossVersion.full)
     ),

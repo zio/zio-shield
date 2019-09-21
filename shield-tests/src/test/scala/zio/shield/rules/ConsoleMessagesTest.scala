@@ -139,5 +139,8 @@ object ConsoleMessagesTest extends TestSuite {
                          ZioShield.allFlowRules,
                          autoSrcPath)
     }
+    test("ZioShieldBlocks") {
+      consoleMessageTest(ZioShieldNoImpurity, autoSrcPath)
+    }
   }
 }
