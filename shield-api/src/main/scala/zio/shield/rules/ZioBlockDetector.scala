@@ -20,11 +20,8 @@ class ZioBlockDetector private (
               _),
             _) if ignoreInZioBlocks =>
         Right(true) // <Block>.apply
-      case (t @ Term.Apply(safeBlocksMatcher(block), _), _)
-          if ignoreInZioBlocks =>
+      case (Term.Apply(safeBlocksMatcher(block), _), _) if ignoreInZioBlocks =>
         Right(true) // <Block>(...)
-      case (t @ Term.Apply(block, _), false) =>
-        Right(false)
       // this might be useful in "smarter" search
       // case (_: Defn.Def, _) =>
       //   Right(false) // reset blocked symbols in def
@@ -46,45 +43,45 @@ object ZioBlockDetector {
     new ZioBlockDetector(outsideBlock.andThen(List(_)))
 
   val safeBlocks = List(
-    "zio/FunctionIO.effect",
-    "zio/FunctionIO.effectTotal",
-    "zio/Task",
-    "zio/Task.effect",
-    "zio/Task.effectAsync",
-    "zio/Task.effectAsyncInterrupt",
-    "zio/Task.effectAsyncMaybe",
-    "zio/Task.effectTotal",
-    "zio/IO",
-    "zio/IO.effect",
-    "zio/IO.effectAsync",
-    "zio/IO.effectAsyncInterrupt",
-    "zio/IO.effectAsyncMaybe",
-    "zio/IO.effectTotal",
-    "zio/RIO",
-    "zio/RIO.effect",
-    "zio/RIO.effectAsync",
-    "zio/RIO.effectAsyncInterrupt",
-    "zio/RIO.effectAsyncMaybe",
-    "zio/RIO.effectTotal",
-    "zio/UIO",
-    "zio/UIO.effectAsync",
-    "zio/UIO.effectAsyncInterrupt",
-    "zio/UIO.effectAsyncMaybe",
-    "zio/UIO.effectTotal",
-    "zio/ZIO",
-    "zio/ZIOFunctions#effect",
-    "zio/ZIOFunctions#effectAsync",
-    "zio/ZIOFunctions#effectAsyncInterrupt",
-    "zio/ZIOFunctions#effectAsyncMaybe",
-    "zio/ZIOFunctions#effectTotal",
-    "zio.stream/Stream.effectAsync",
-    "zio.stream/Stream.effectAsyncInterrupt",
-    "zio.stream/Stream.effectAsyncMaybe",
-    "zio.stream/ZStream.effectAsync",
-    "zio.stream/ZStream.effectAsyncInterrupt",
-    "zio.stream/ZStream.effectAsyncMaybe",
-    "zio/blocking/Blocking.Service#effectBlocking",
-    "zio/blocking/Blocking.Service#effectBlockingCancelable"
+    "zio.FunctionIO.effect",
+    "zio.FunctionIO.effectTotal",
+    "zio.Task",
+    "zio.Task.effect",
+    "zio.Task.effectAsync",
+    "zio.Task.effectAsyncInterrupt",
+    "zio.Task.effectAsyncMaybe",
+    "zio.Task.effectTotal",
+    "zio.IO",
+    "zio.IO.effect",
+    "zio.IO.effectAsync",
+    "zio.IO.effectAsyncInterrupt",
+    "zio.IO.effectAsyncMaybe",
+    "zio.IO.effectTotal",
+    "zio.RIO",
+    "zio.RIO.effect",
+    "zio.RIO.effectAsync",
+    "zio.RIO.effectAsyncInterrupt",
+    "zio.RIO.effectAsyncMaybe",
+    "zio.RIO.effectTotal",
+    "zio.UIO",
+    "zio.UIO.effectAsync",
+    "zio.UIO.effectAsyncInterrupt",
+    "zio.UIO.effectAsyncMaybe",
+    "zio.UIO.effectTotal",
+    "zio.ZIO",
+    "zio.ZIOFunctions.effect",
+    "zio.ZIOFunctions.effectAsync",
+    "zio.ZIOFunctions.effectAsyncInterrupt",
+    "zio.ZIOFunctions.effectAsyncMaybe",
+    "zio.ZIOFunctions.effectTotal",
+    "zio.stream.Stream.effectAsync",
+    "zio.stream.Stream.effectAsyncInterrupt",
+    "zio.stream.Stream.effectAsyncMaybe",
+    "zio.stream.ZStream.effectAsync",
+    "zio.stream.ZStream.effectAsyncInterrupt",
+    "zio.stream.ZStream.effectAsyncMaybe",
+    "zio.blocking.Blocking.Service.effectBlocking",
+    "zio.blocking.Blocking.Service.effectBlockingCancelable"
   )
 
   val safeBlocksMatcher: SymbolMatcher =

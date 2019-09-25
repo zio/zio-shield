@@ -4,6 +4,7 @@ import scala.meta._
 import scalafix.v1._
 
 import scala.collection.mutable
+import scala.meta.internal.semanticdb.Scala._
 
 import zio.shield.utils.SymbolInformationOps
 
@@ -11,7 +12,7 @@ sealed trait FlowEdge
 
 final case class FunctionEdge(argsTypes: List[String],
                               returnType: Option[String],
-                              innerSymbols: List[String])
+                              innerSymbols: List[String]) // only Terms
     extends FlowEdge
 
 object FunctionEdge {
@@ -46,7 +47,7 @@ object FunctionEdge {
       override def apply(tree: Tree): Unit = tree match {
         case t =>
           val symbol = t.symbol
-          if (symbol.isGlobal) {
+          if (symbol.value.isGlobal && symbol.value.isTerm) {
             innerSymbols += symbol.value
           }
           super.apply(tree)
@@ -113,7 +114,7 @@ object ObjectEdge {
   }
 }
 
-final case class ValVarEdge(innerSymbols: List[String]) extends FlowEdge
+final case class ValVarEdge(innerSymbols: List[String]) extends FlowEdge // only Terms
 
 object ValVarEdge {
   val empty = ValVarEdge(List.empty)
@@ -126,7 +127,7 @@ object ValVarEdge {
       override def apply(tree: Tree): Unit = tree match {
         case t =>
           val symbol = t.symbol
-          if (symbol.isGlobal) {
+          if (symbol.value.isGlobal && symbol.value.isTerm) {
             innerSymbols += symbol.value
           }
       }

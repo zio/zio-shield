@@ -25,6 +25,10 @@ object ZioShieldPlugin extends AutoPlugin {
         "Optional location of ZIO Shield config. " +
           "If not specified config is read from \".shield.yaml\" in the project root."
       )
+    val shieldDebugOutput: SettingKey[Boolean] =
+      settingKey[Boolean](
+        "Turn on verbose output for debugging purposes."
+      )
 
     def shieldConfigSettings(config: Configuration): Seq[Def.Setting[_]] =
       Seq(
@@ -35,7 +39,8 @@ object ZioShieldPlugin extends AutoPlugin {
   import autoImport._
 
   override def globalSettings: Seq[Def.Setting[_]] = Seq(
-    shieldFatalWarnings := false
+    shieldFatalWarnings := false,
+    shieldDebugOutput := false
   )
 
   override def buildSettings: Seq[Def.Setting[_]] = Seq(
@@ -56,7 +61,9 @@ object ZioShieldPlugin extends AutoPlugin {
     Def.task {
       val log = streams.value.log
 
-      val path = shieldConfig.in(config).value
+      val path = shieldConfig
+        .in(config)
+        .value
         .getOrElse((baseDirectory in ThisBuild).value / ".shield.yaml")
         .toPath
       log.info(s"""Reading ZIO Shield config from "${path.toAbsolutePath}"""")
@@ -101,11 +108,15 @@ object ZioShieldPlugin extends AutoPlugin {
 
       val stats = zioShield.cacheStats
 
-      log.info(f"""||ZIO Shield Statistics|
-                       ||---------------------|
-                       ||Files: ${stats.filesCount}%14s|
-                       ||Symbols: ${stats.symbolsCount}%12s|
-                       ||Edges: ${stats.edgesCount}%14s|""".stripMargin)
+      if (shieldDebugOutput.value) {
+        log.info(f"""||ZIO Shield Statistics|
+              ||---------------------|
+              ||Files: ${stats.filesCount}%14s|
+              ||Symbols: ${stats.symbolsCount}%12s|
+              ||Edges: ${stats.edgesCount}%14s|""".stripMargin)
+
+        log.info(s"Leaf symbols:\n${stats.leafSymbols.mkString("  ", "\n  ", "\n")}")
+      }
 
       log.info("Running ZIO Shield...")
 

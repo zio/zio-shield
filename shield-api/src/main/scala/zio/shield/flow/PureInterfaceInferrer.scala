@@ -11,7 +11,7 @@ case object PureInterfaceInferrer extends FlowInferrer[Tag.PureInterface.type] {
 
   val name: String = toString
 
-  val ignoreParents = List("scala/AnyRef#", "scala/AnyVal#")
+  val ignoreParents = List("scala/AnyRef#", "scala/AnyVal#", "scala/Serializable#")
 
   def infer(flowCache: FlowCache)(
       symbol: String): TagProp[Tag.PureInterface.type] = {

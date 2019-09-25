@@ -11,7 +11,10 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
 
   val constImpureSymbols = List(
     "scala/Predef.println(+1).",
-    "scala/Predef.println()."
+    "scala/Predef.println().",
+    "java/io/File#`<init>`().",
+    "java/io/File#exists().",
+    "java/io/File#toPath()."
   ) // TODO possible can be constructed via Java reflection or bytecode analysis
 
   def constImpurityChecker(

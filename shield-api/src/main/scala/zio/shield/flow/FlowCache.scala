@@ -175,7 +175,7 @@ final case class FlowCacheImpl(
 
       files.foreach {
         case (symbol, file) if targetFilesSet.contains(file) => dfs(symbol)
-        case _ =>
+        case _                                               =>
       }
     }
 
@@ -190,7 +190,14 @@ final case class FlowCacheImpl(
           ctorArgsTypes.size + parentsTypes.size + innerDefns.size
         case ObjectEdge(innerDefns)   => innerDefns.size
         case ValVarEdge(innerSymbols) => innerSymbols.size
-      }.sum
+      }.sum,
+      edges.values.flatMap {
+        case FunctionEdge(_, _, innerSymbols) =>
+          innerSymbols.filterNot(edges.contains)
+        case ValVarEdge(innerSymbols) =>
+          innerSymbols.filterNot(edges.contains)
+        case _ => List.empty
+      }.toList.distinct.sorted
     )
 }
 
@@ -202,5 +209,8 @@ object FlowCache {
                   mutable.Map.empty,
                   mutable.Map.empty)
 
-  final case class Stats(filesCount: Int, symbolsCount: Int, edgesCount: Int)
+  final case class Stats(filesCount: Int,
+                         symbolsCount: Int,
+                         edgesCount: Int,
+                         leafSymbols: List[String])
 }
