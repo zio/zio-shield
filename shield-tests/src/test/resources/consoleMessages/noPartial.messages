@@ -1,16 +1,32 @@
-ZioShieldNoPartialFunctionsExample.scala:9:39: error: possible partial symbol
+ZioShieldNoPartialFunctionsExample.scala:8:17: error: possible partial symbol
+  Option("abc").get
+                ^^^
+---
+ZioShieldNoPartialFunctionsExample.scala:10:19: error: possible partial symbol
+  Left(123).right.get
+                  ^^^
+---
+ZioShieldNoPartialFunctionsExample.scala:11:23: error: possible partial symbol
+  new File("foo.bar").createNewFile()
+                      ^^^^^^^^^^^^^
+---
+ZioShieldNoPartialFunctionsExample.scala:12:5: error: possible partial symbol
+  1.wait()
+    ^^^^
+---
+ZioShieldNoPartialFunctionsExample.scala:13:39: error: possible partial symbol
   ZioShieldNoPartialFunctionsExample2.annotatedPartial("foo")
                                       ^^^^^^^^^^^^^^^^
 ---
-ZioShieldNoPartialFunctionsExample.scala:10:39: error: possible partial symbol
+ZioShieldNoPartialFunctionsExample.scala:14:39: error: possible partial symbol
   ZioShieldNoPartialFunctionsExample2.defBodyPartial("foo")
                                       ^^^^^^^^^^^^^^
 ---
-ZioShieldNoPartialFunctionsExample.scala:13:39: error: possible partial symbol
+ZioShieldNoPartialFunctionsExample.scala:17:39: error: possible partial symbol
   ZioShieldNoPartialFunctionsExample2.valBodyPartial
                                       ^^^^^^^^^^^^^^
 ---
-ZioShieldNoPartialFunctionsExample.scala:14:39: error: possible partial symbol
+ZioShieldNoPartialFunctionsExample.scala:18:39: error: possible partial symbol
   ZioShieldNoPartialFunctionsExample2.usingPartial("foo")
                                       ^^^^^^^^^^^^
 ---

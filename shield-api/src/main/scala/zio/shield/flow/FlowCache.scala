@@ -152,11 +152,7 @@ final case class FlowCacheImpl(
 
           edges.get(symbol) match {
             case Some(e) => // edge
-              inferrers.foreach { i =>
-                if (i.isInferable(symbol, e)) {
-                  i.dependentSymbols(e).foreach(dfs)
-                }
-              }
+              inferrers.foreach(_.dependentSymbols(e).foreach(dfs))
 
               inferrers.foreach { i =>
                 if (i.isInferable(symbol, e)) {
@@ -186,18 +182,26 @@ final case class FlowCacheImpl(
       edges.values.map {
         case FunctionEdge(argsTypes, returnType, innerSymbols) =>
           argsTypes.size + returnType.size + innerSymbols.size
-        case ClassTraitEdge(ctorArgsTypes, parentsTypes, innerDefns) =>
-          ctorArgsTypes.size + parentsTypes.size + innerDefns.size
-        case ObjectEdge(innerDefns)   => innerDefns.size
+        case ClassTraitEdge(ctorArgsTypes,
+                            parentsTypes,
+                            innerDefns,
+                            innerSymbols) =>
+          ctorArgsTypes.size + parentsTypes.size + innerDefns.size + innerSymbols.size
+        case ObjectEdge(innerDefns, innerSymbols) =>
+          innerDefns.size + innerSymbols.size
         case ValVarEdge(innerSymbols) => innerSymbols.size
       }.sum,
-      edges.values.flatMap {
-        case FunctionEdge(_, _, innerSymbols) =>
-          innerSymbols.filterNot(edges.contains)
-        case ValVarEdge(innerSymbols) =>
-          innerSymbols.filterNot(edges.contains)
-        case _ => List.empty
-      }.toList.distinct.sorted
+      edges.values
+        .flatMap {
+          case FunctionEdge(_, _, innerSymbols) =>
+            innerSymbols.filterNot(edges.contains)
+          case ValVarEdge(innerSymbols) =>
+            innerSymbols.filterNot(edges.contains)
+          case _ => List.empty
+        }
+        .toList
+        .distinct
+        .sorted
     )
 }
 

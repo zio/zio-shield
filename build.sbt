@@ -18,7 +18,6 @@ lazy val shieldApi = (project in file("shield-api"))
     libraryDependencies ++= Seq(
       scalafixCore,
       scalafixRules,
-      scalafixReflect,
       scaluzzi,
       circeCore,
       circeGeneric,
@@ -44,7 +43,7 @@ lazy val shieldSbt = (project in file("shield-sbt"))
 lazy val shieldTests = (project in file("shield-tests"))
   .dependsOn(shieldApi) // for direct semantic document loading
   .settings(
-    moduleName := "zio-tests",
+    moduleName := "zio-shield-tests",
     skip in publish := true,
     libraryDependencies ++= Seq(
       utest % "test",
@@ -55,4 +54,13 @@ lazy val shieldTests = (project in file("shield-tests"))
     ),
     scalacOptions += "-Yrangepos",
     testFrameworks += new TestFramework("utest.runner.Framework")
+  )
+
+lazy val shieldDetector = (project in file("shield-detector"))
+  .settings(
+    moduleName := "zio-shield-detector",
+    skip in publish := true,
+    libraryDependencies ++= Seq(
+      "org.reflections" % "reflections" % "0.9.11"
+    )
   )

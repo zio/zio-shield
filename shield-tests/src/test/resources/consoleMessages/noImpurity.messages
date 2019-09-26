@@ -10,6 +10,10 @@ ZioShieldNoImpurityExample.scala:10:3: error: possibly impure
   println("abc")
   ^^^^^^^
 ---
+ZioShieldNoImpurityExample.scala:11:3: error: possibly impure
+  println()
+  ^^^^^^^
+---
 ZioShieldNoImpurityExample.scala:12:3: error: possibly impure
   boom()
   ^^^^
@@ -17,6 +21,10 @@ ZioShieldNoImpurityExample.scala:12:3: error: possibly impure
 ZioShieldNoImpurityExample.scala:13:3: error: possibly impure
   boom
   ^^^^
+---
+ZioShieldNoImpurityExample.scala:14:17: error: possibly impure
+  List(1, 2, 3).foreach(i => ())
+                ^^^^^^^
 ---
 ZioShieldNoImpurityExample.scala:15:31: error: possibly impure
   ZioShieldNoImpurityExample2.annotatedImpure("foo")
