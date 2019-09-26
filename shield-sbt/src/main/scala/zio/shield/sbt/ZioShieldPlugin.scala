@@ -47,13 +47,27 @@ object ZioShieldPlugin extends AutoPlugin {
     shieldConfig := None
   )
 
-  override def projectSettings: Seq[Def.Setting[_]] =
+  override def projectSettings: Seq[Def.Setting[_]] = {
     Seq(
-      libraryDependencies ++= Seq(compilerPlugin(
-        "org.scalameta" % "semanticdb-scalac" % "4.2.3" cross CrossVersion.full)),
-      scalacOptions += "-Yrangepos"
+      libraryDependencies ++= {
+        if (!libraryDependencies.value.exists(_.name == "semanticdb-scalac"))
+          Seq(compilerPlugin(
+            "org.scalameta" % "semanticdb-scalac" % "4.2.3" cross CrossVersion.full))
+        else
+          Seq.empty
+      },
+      scalacOptions ++= {
+        if (!libraryDependencies.value.exists(_.name == "semanticdb-scalac"))
+          Seq(
+            "-Yrangepos",
+            "-Xplugin-require:semanticdb"
+          )
+        else
+          Seq.empty
+      }
     ) ++
       Seq(Compile, Test).flatMap(c => inConfig(c)(shieldConfigSettings(c)))
+  }
 
   private def shieldTask(
       config: Configuration
@@ -115,7 +129,8 @@ object ZioShieldPlugin extends AutoPlugin {
               ||Symbols: ${stats.symbolsCount}%12s|
               ||Edges: ${stats.edgesCount}%14s|""".stripMargin)
 
-        log.info(s"Leaf symbols:\n${stats.leafSymbols.mkString("  ", "\n  ", "\n")}")
+        log.info(
+          s"Leaf symbols:\n${stats.leafSymbols.mkString("  ", "\n  ", "\n")}")
       }
 
       log.info("Running ZIO Shield...")

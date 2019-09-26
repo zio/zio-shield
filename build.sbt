@@ -4,6 +4,7 @@ inThisBuild(
   Seq(
     scalaVersion := scala212,
     organization := "zio.shield",
+    version := "0.1.0-SNAPSHOT",
     licenses := Seq(
       "Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")
     ),
@@ -12,7 +13,6 @@ inThisBuild(
 )
 
 lazy val shieldApi = (project in file("shield-api"))
-  .enablePlugins(GitVersioning)
   .settings(
     moduleName := "zio-shield-api",
     libraryDependencies ++= Seq(
@@ -29,7 +29,7 @@ lazy val shieldApi = (project in file("shield-api"))
   )
 
 lazy val shieldSbt = (project in file("shield-sbt"))
-  .enablePlugins(GitVersioning, SbtPlugin)
+  .enablePlugins(SbtPlugin)
   .dependsOn(shieldApi)
   .settings(
     moduleName := "zio-shield",
