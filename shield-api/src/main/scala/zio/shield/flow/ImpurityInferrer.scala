@@ -78,16 +78,18 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
   }
 
   def dependentSymbols(edge: FlowEdge): List[String] = edge match {
-    case FunctionEdge(_, _, innerSymbols) => innerSymbols
-    case ValVarEdge(innerSymbols)         => innerSymbols
-    case _                                => List.empty
+    case FunctionEdge(_, _, innerSymbols)      => innerSymbols
+    case ValVarEdge(innerSymbols)              => innerSymbols
+    case ClassTraitEdge(_, _, _, innerSymbols) => innerSymbols
+    case ObjectEdge(_, innerSymbols)           => innerSymbols
+    case _                                     => List.empty
   }
 
   def isInferable(symbol: String, edge: FlowEdge): Boolean = {
     edge match {
-      case FunctionEdge(_, _, _) => true
-      case ValVarEdge(_)         => true
-      case _                     => false
+      case FunctionEdge(_, _, _)      => true
+      case ValVarEdge(_)              => true
+      case _                          => false
     }
   }
 }

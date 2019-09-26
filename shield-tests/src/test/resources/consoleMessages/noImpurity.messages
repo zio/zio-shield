@@ -10,6 +10,10 @@ ZioShieldNoImpurityExample.scala:10:3: error: possibly impure
   println("abc")
   ^^^^^^^
 ---
+ZioShieldNoImpurityExample.scala:11:3: error: possibly impure
+  println()
+  ^^^^^^^
+---
 ZioShieldNoImpurityExample.scala:12:3: error: possibly impure
   boom()
   ^^^^

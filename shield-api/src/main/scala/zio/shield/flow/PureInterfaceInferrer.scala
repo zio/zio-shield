@@ -11,14 +11,15 @@ case object PureInterfaceInferrer extends FlowInferrer[Tag.PureInterface.type] {
 
   val name: String = toString
 
-  val ignoreParents = List("scala/AnyRef#", "scala/AnyVal#", "scala/Serializable#")
+  val ignoreParents =
+    List("scala/AnyRef#", "scala/AnyVal#", "scala/Serializable#")
 
   def infer(flowCache: FlowCache)(
       symbol: String): TagProp[Tag.PureInterface.type] = {
     val maybeEdge = flowCache.edges.get(symbol)
 
     val effectfulParents = maybeEdge match {
-      case Some(ClassTraitEdge(_, parentsTypes, _)) =>
+      case Some(ClassTraitEdge(_, parentsTypes, _, _)) =>
         parentsTypes.filterNot(
           t =>
             flowCache
@@ -38,7 +39,7 @@ case object PureInterfaceInferrer extends FlowInferrer[Tag.PureInterface.type] {
     }
 
     val constPatch = maybeEdge match {
-      case Some(ClassTraitEdge(_, _, innerDefns)) =>
+      case Some(ClassTraitEdge(_, _, innerDefns, _)) =>
         innerDefns.flatMap { d =>
           flowCache.edges.get(d) match {
             case Some(edge: FunctionEdge) =>
@@ -69,12 +70,12 @@ case object PureInterfaceInferrer extends FlowInferrer[Tag.PureInterface.type] {
   }
 
   def dependentSymbols(edge: FlowEdge): List[String] = edge match {
-    case ClassTraitEdge(_, parentsTypes, _) => parentsTypes
-    case _                                  => List.empty
+    case ClassTraitEdge(_, parentsTypes, _, _) => parentsTypes
+    case _                                     => List.empty
   }
 
   def isInferable(symbol: String, edge: FlowEdge): Boolean = edge match {
-    case ClassTraitEdge(_, _, _) => true
-    case _                       => false
+    case ClassTraitEdge(_, _, _, _) => true
+    case _                          => false
   }
 }

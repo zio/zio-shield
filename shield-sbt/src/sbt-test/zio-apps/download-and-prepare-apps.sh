@@ -18,7 +18,8 @@ for repo in "${REPOS[@]}"; do
   else
     echo "Downloading and preparing $repo_name..."
     git clone $repo $repo_name || return
-    echo -e '\naddSbtPlugin("zio.shield" % "zio-shield" % sys.props("plugin.version"))\n' >> $repo_name/project/plugins.sbt
+    echo -e '\naddSbtPlugin("zio.shield" % "zio-shield" % sys.props("plugin.version") cross CrossVersion.full)\n'\
+      >> $repo_name/project/plugins.sbt
     echo -e '> shield' > $repo_name/test
     echo -e '\ninThisBuild(shieldDebugOutput := true)\n' >> $repo_name/build.sbt
   fi

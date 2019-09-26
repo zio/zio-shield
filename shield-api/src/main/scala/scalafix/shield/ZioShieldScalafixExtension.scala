@@ -2,7 +2,6 @@ package scalafix.shield
 
 import java.nio.file.Path
 
-import scalafix.internal.reflect.ClasspathOps
 import scalafix.internal.v1.InternalSemanticDoc
 import scalafix.v1.{SemanticDocument, SyntacticDocument}
 
