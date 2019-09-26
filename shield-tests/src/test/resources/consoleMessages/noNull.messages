@@ -2,6 +2,10 @@ ZioShieldNoNullExample.scala:8:3: error: nullable: null usage
   null
   ^^^^
 ---
+ZioShieldNoNullExample.scala:9:17: error: possibly nullable
+  new File(".").getParent
+                ^^^^^^^^^
+---
 ZioShieldNoNullExample.scala:10:27: error: possibly nullable
   ZioShieldNoNullExample2.annotatedNullable("foo")
                           ^^^^^^^^^^^^^^^^^

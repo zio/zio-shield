@@ -22,6 +22,10 @@ ZioShieldNoImpurityExample.scala:13:3: error: possibly impure
   boom
   ^^^^
 ---
+ZioShieldNoImpurityExample.scala:14:17: error: possibly impure
+  List(1, 2, 3).foreach(i => ())
+                ^^^^^^^
+---
 ZioShieldNoImpurityExample.scala:15:31: error: possibly impure
   ZioShieldNoImpurityExample2.annotatedImpure("foo")
                               ^^^^^^^^^^^^^^^

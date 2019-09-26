@@ -62,6 +62,10 @@ ZioShieldShowcase.scala:31:7: error: possibly impure
       println(badResponse.error)
       ^^^^^^^
 ---
+ZioShieldShowcase.scala:38:14: error: possibly impure
+      result.foreach { sum =>
+             ^^^^^^^
+---
 ZioShieldShowcase.scala:39:9: error: possibly impure
         handleResponse(alwaysGood())
         ^^^^^^^^^^^^^^

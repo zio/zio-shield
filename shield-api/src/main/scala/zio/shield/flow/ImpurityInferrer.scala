@@ -5,17 +5,17 @@ import zio.shield.rules.ZioBlockDetector
 import zio.shield.tag._
 import zio.shield.utils.SymbolInformationOps
 
+import scala.io.{Source => ScalaSource}
 import scala.meta._
 
 case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
 
-  val constImpureSymbols = List(
-    "scala/Predef.println(+1).",
-    "scala/Predef.println().",
-    "java/io/File#`<init>`().",
-    "java/io/File#exists().",
-    "java/io/File#toPath()."
-  ) // TODO possible can be constructed via Java reflection or bytecode analysis
+  val constImpureMatcher: SymbolMatcher = SymbolMatcher.normalized(
+    ScalaSource
+      .fromInputStream(
+        getClass.getClassLoader.getResourceAsStream("impure_methods.txt"))
+      .getLines()
+      .toList: _*)
 
   def constImpurityChecker(
       implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
@@ -39,7 +39,7 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
   val name: String = toString
 
   def infer(flowCache: FlowCache)(symbol: String): TagProp[Tag.Impure.type] = {
-    if (ImpurityInferrer.constImpureSymbols.contains(symbol)) {
+    if (ImpurityInferrer.constImpureMatcher.matches(Symbol(symbol))) {
       TagProp(Tag.Impure, cond = true, List(TagProof.GivenProof))
     } else {
 
@@ -87,9 +87,9 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
 
   def isInferable(symbol: String, edge: FlowEdge): Boolean = {
     edge match {
-      case FunctionEdge(_, _, _)      => true
-      case ValVarEdge(_)              => true
-      case _                          => false
+      case FunctionEdge(_, _, _) => true
+      case ValVarEdge(_)         => true
+      case _                     => false
     }
   }
 }

@@ -1,6 +1,5 @@
 package zio.shield.detector
 
-import java.io.File
 import java.lang.reflect.Method
 import java.nio.file.{Files, Paths, StandardOpenOption}
 
@@ -38,9 +37,6 @@ object Detector extends App {
       }
       .toList
 
-  def methodsFilter(method: Method): Boolean = true
-  def classFilter(cls: Class[_]): Boolean = true
-
   val classLoadersList =
     List(ClasspathHelper.contextClassLoader, ClasspathHelper.staticClassLoader)
   lazy val reflections = new Reflections(
@@ -53,18 +49,42 @@ object Detector extends App {
   lazy val scalaClasses = reflections.getSubTypesOf(classOf[Any]).asScala.toList
 
   val partialMethods = (javaClasses ++ scalaClasses)
-    .filter(classFilter)
     .flatMap { cls =>
-      cls.getDeclaredMethods.filter(methodsFilter).collect {
+      cls.getDeclaredMethods.collect {
         case m if m.getExceptionTypes.nonEmpty => s"${cls.getName}.${m.getName}"
       }
     }
     .distinct
     .sorted
 
-  val partialFile = Paths.get("partial_methods.txt")
+  val nullableMethods = javaClasses
+    .flatMap { cls =>
+      cls.getDeclaredMethods.collect {
+        case m if !m.getReturnType.isPrimitive => s"${cls.getName}.${m.getName}"
+      }
+    }
+    .distinct
+    .sorted
 
-  Files.write(partialFile,
+  val impureMethods = (javaClasses ++ scalaClasses)
+    .flatMap { cls =>
+      cls.getDeclaredMethods.collect {
+        case m if m.getReturnType == classOf[Unit] =>
+          s"${cls.getName}.${m.getName}"
+      }
+    }
+    .distinct
+    .sorted
+
+  Files.write(Paths.get("partial_methods.txt"),
               partialMethods.mkString("\n").getBytes(),
               StandardOpenOption.CREATE)
+
+  Files.write(Paths.get("nullable_methods.txt"),
+    nullableMethods.mkString("\n").getBytes(),
+    StandardOpenOption.CREATE)
+
+  Files.write(Paths.get("impure_methods.txt"),
+    impureMethods.mkString("\n").getBytes(),
+    StandardOpenOption.CREATE)
 }

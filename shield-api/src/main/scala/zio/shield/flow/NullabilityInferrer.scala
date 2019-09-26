@@ -1,20 +1,25 @@
 package zio.shield.flow
 
 import scalafix.v1._
-import scala.meta._
 import zio.shield.tag._
+
+import scala.io.{Source => ScalaSource}
+import scala.meta._
 
 case object NullabilityInferrer extends FlowInferrer[Tag.Nullable.type] {
 
-  val constNullableSymbols = List(
-    "java/io/File.getParent"
-  ) // TODO possible can be constructed via Java reflection or bytecode analysis
+  val constNullableMatcher: SymbolMatcher = SymbolMatcher.normalized(
+    ScalaSource
+      .fromInputStream(
+        getClass.getClassLoader.getResourceAsStream("nullable_methods.txt"))
+      .getLines()
+      .toList: _*)
 
   val name: String = toString
 
   def infer(flowCache: FlowCache)(
       symbol: String): TagProp[Tag.Nullable.type] = {
-    if (NullabilityInferrer.constNullableSymbols.contains(symbol)) {
+    if (NullabilityInferrer.constNullableMatcher.matches(Symbol(symbol))) {
       TagProp(Tag.Nullable, cond = true, List(TagProof.GivenProof))
     } else {
       val constPatch = flowCache.trees.get(symbol) match {
@@ -56,9 +61,9 @@ case object NullabilityInferrer extends FlowInferrer[Tag.Nullable.type] {
 
   def isInferable(symbol: String, edge: FlowEdge): Boolean = {
     edge match {
-      case FunctionEdge(_, _, _)      => true
-      case ValVarEdge(_)              => true
-      case _                          => false
+      case FunctionEdge(_, _, _) => true
+      case ValVarEdge(_)         => true
+      case _                     => false
     }
   }
 }
