@@ -2,15 +2,35 @@ import Dependencies._
 
 inThisBuild(
   Seq(
-    scalaVersion := scala212,
-    organization := "zio.shield",
-    version := "0.1.0-SNAPSHOT",
-    licenses := Seq(
-      "Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")
+    organization := "com.github.vovapolu",
+    licenses := List(
+      "Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+    homepage := Some(url("https://github.com/vovapolu/zio-shield")),
+    scmInfo := Some(
+      ScmInfo(
+        url("https://github.com/vovapolu/zio-shield"),
+        "scm:git@github.com:vovapolu/zio-shield.git"
+      )
     ),
+    developers := List(
+      Developer(
+        "vovapolu",
+        "Vladimir Polushin",
+        "vovapolu@gmail.com",
+        url("https://vovapolu.github.io")
+      )
+    ),
+    scalaVersion := scala212,
+    version := "0.1.0-SNAPSHOT",
     resolvers += Resolver.sonatypeRepo("snapshots")
   )
 )
+
+lazy val publishSettings = Seq(
+  publishTo := sonatypePublishToBundle.value
+)
+
+skip in publish := true
 
 lazy val shieldApi = (project in file("shield-api"))
   .settings(
@@ -25,8 +45,9 @@ lazy val shieldApi = (project in file("shield-api"))
       circeYaml,
       utest % "test"
     ),
-    testFrameworks += new TestFramework("utest.runner.Framework")
+    testFrameworks += new TestFramework("utest.runner.Framework"),
   )
+  .settings(publishSettings)
 
 lazy val shieldSbt = (project in file("shield-sbt"))
   .enablePlugins(SbtPlugin)
@@ -39,6 +60,7 @@ lazy val shieldSbt = (project in file("shield-sbt"))
       s"-Dplugin.version=${version.value}"
     )
   )
+  .settings(publishSettings)
 
 lazy val shieldTests = (project in file("shield-tests"))
   .dependsOn(shieldApi) // for direct semantic document loading
