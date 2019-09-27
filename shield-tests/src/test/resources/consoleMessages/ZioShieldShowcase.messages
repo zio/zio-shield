@@ -54,6 +54,30 @@ ZioShieldShowcase.scala:34:35: error: type casting
       val goodResponse = response.asInstanceOf[GoodResponse]
                                   ^^^^^^^^^^^^
 ---
+ZioShieldShowcase.scala:27:7: error: possibly impure
+  def handleResponse(response: Response): Unit = {
+      ^^^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:31:7: error: possibly impure
+      println(badResponse.error)
+      ^^^^^^^
+---
+ZioShieldShowcase.scala:38:14: error: possibly impure
+      result.foreach { sum =>
+             ^^^^^^^
+---
+ZioShieldShowcase.scala:39:9: error: possibly impure
+        handleResponse(alwaysGood())
+        ^^^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:40:9: error: possibly impure
+        handleResponse(nullable())
+        ^^^^^^^^^^^^^^
+---
+ZioShieldShowcase.scala:42:9: error: possibly impure
+        println(s"Total sum: $sum")
+        ^^^^^^^
+---
 ZioShieldShowcase.scala:31:7: error: ignored expression
       println(badResponse.error)
       ^^^^^^^^^^^^^^^^^^^^^^^^^^

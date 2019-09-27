@@ -3,23 +3,30 @@ package zio.shield.flow
 import scalafix.v1._
 import zio.shield.tag._
 
+import scala.io.{Source => ScalaSource}
+
 import scala.meta._
 
 case object PartialityInferrer extends FlowInferrer[Tag.Partial.type] {
 
-  val constPartialSymbols = List(
-    "scala/util/Either.LeftProjection#get().",
-    "scala/util/Either.LeftProjection#get().",
-    "scala/util/Either.RightProjection#get().",
-    "scala/util/Try#get().",
-    "scala/Option#get().",
-    "scala/collection/IterableLike#head()."
-  ) // TODO possible can be constructed via Java reflection or bytecode analysis
+  val constPartialMatcher: SymbolMatcher = SymbolMatcher.normalized(
+    List(
+      "scala.util.Either.LeftProjection.get",
+      "scala.util.Either.LeftProjection.get",
+      "scala.util.Either.RightProjection.get",
+      "scala.util.Try.get",
+      "scala.Option.get",
+      "scala.collection.IterableLike"
+    ) ++ ScalaSource
+      .fromInputStream(
+        getClass.getClassLoader.getResourceAsStream("partial_methods.txt"))
+      .getLines()
+      .toList: _*)
 
   val name: String = toString
 
   def infer(flowCache: FlowCache)(symbol: String): TagProp[Tag.Partial.type] = {
-    if (PartialityInferrer.constPartialSymbols.contains(symbol)) {
+    if (PartialityInferrer.constPartialMatcher.matches(Symbol(symbol))) {
       TagProp(Tag.Partial, cond = true, List(TagProof.GivenProof))
     } else {
 
@@ -56,14 +63,18 @@ case object PartialityInferrer extends FlowInferrer[Tag.Partial.type] {
   }
 
   def dependentSymbols(edge: FlowEdge): List[String] = edge match {
-    case FunctionEdge(_, _, innerSymbols) => innerSymbols
-    case ValVarEdge(innerSymbols)         => innerSymbols
-    case _                                => List.empty
+    case FunctionEdge(_, _, innerSymbols)      => innerSymbols
+    case ValVarEdge(innerSymbols)              => innerSymbols
+    case ClassTraitEdge(_, _, _, innerSymbols) => innerSymbols
+    case ObjectEdge(_, innerSymbols)           => innerSymbols
+    case _                                     => List.empty
   }
 
-  def isInferable(symbol: String, edge: FlowEdge): Boolean = edge match {
-    case FunctionEdge(_, _, _) => true
-    case ValVarEdge(_)         => true
-    case _                     => false
+  def isInferable(symbol: String, edge: FlowEdge): Boolean = {
+    edge match {
+      case FunctionEdge(_, _, _) => true
+      case ValVarEdge(_)         => true
+      case _                     => false
+    }
   }
 }

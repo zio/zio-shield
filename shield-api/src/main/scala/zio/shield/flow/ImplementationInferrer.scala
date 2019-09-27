@@ -12,7 +12,7 @@ case object ImplementationInferrer
 
     val pureInterfaceOrImplementationParents =
       flowCache.edges.get(symbol) match {
-        case Some(ClassTraitEdge(_, parentsTypes, _)) =>
+        case Some(ClassTraitEdge(_, parentsTypes, _, _)) =>
           parentsTypes.filter { p =>
             (for {
               pure <- flowCache.searchTag(Tag.PureInterface)(p)
@@ -31,12 +31,12 @@ case object ImplementationInferrer
   }
 
   def dependentSymbols(edge: FlowEdge): List[String] = edge match {
-    case ClassTraitEdge(_, parentsTypes, _) => parentsTypes
+    case ClassTraitEdge(_, parentsTypes, _, _) => parentsTypes
     case _                                  => List.empty
   }
 
   def isInferable(symbol: String, edge: FlowEdge): Boolean = edge match {
-    case ClassTraitEdge(_, _, _) => true
+    case ClassTraitEdge(_, _, _, _) => true
     case _                       => false
   }
 }

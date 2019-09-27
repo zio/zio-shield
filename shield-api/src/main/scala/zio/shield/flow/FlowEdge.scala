@@ -4,18 +4,42 @@ import scala.meta._
 import scalafix.v1._
 
 import scala.collection.mutable
+import scala.meta.internal.semanticdb.Scala._
 
 import zio.shield.utils.SymbolInformationOps
 
 sealed trait FlowEdge
 
+object FlowEdge {
+  private[flow] def symbolsFromBody(body: Tree,
+                                    skipSymbols: List[String] = List.empty)(
+      implicit semDoc: SemanticDocument): List[String] = {
+    val innerSymbols = mutable.HashSet[String]()
+
+    new Traverser {
+      override def apply(tree: Tree): Unit = {
+        val symbol = tree.symbol
+        if (symbol.value.isGlobal && symbol.value.isTerm) {
+          innerSymbols += symbol.value
+        }
+        if (!skipSymbols.contains(symbol.value)) {
+          super.apply(tree)
+        }
+      }
+    }.apply(body)
+
+    innerSymbols.toList
+  }
+}
+
 final case class FunctionEdge(argsTypes: List[String],
                               returnType: Option[String],
-                              innerSymbols: List[String])
+                              innerSymbols: List[String]) // only Terms
     extends FlowEdge
 
 object FunctionEdge {
-  private def fromParamsName(paramss: List[List[Term.Param]], name: Term.Name)(
+  private def fromParamsAndName(paramss: List[List[Term.Param]],
+                                name: Term.Name)(
       implicit doc: SemanticDocument): (List[String], Option[String]) = {
     val argsTypes =
       paramss.flatten
@@ -31,40 +55,29 @@ object FunctionEdge {
   }
 
   def fromDecl(d: Decl.Def)(implicit semDoc: SemanticDocument): FunctionEdge = {
-    val (argsTypes, returnType) = fromParamsName(d.paramss, d.name)
+    val (argsTypes, returnType) = fromParamsAndName(d.paramss, d.name)
 
     FunctionEdge(argsTypes, returnType, List.empty)
   }
 
   def fromDefn(d: Defn.Def)(implicit semDoc: SemanticDocument): FunctionEdge = {
+    val (argsTypes, returnType) = fromParamsAndName(d.paramss, d.name)
+    val innerSymbols = FlowEdge.symbolsFromBody(d.body)
 
-    val (argsTypes, returnType) = fromParamsName(d.paramss, d.name)
-
-    val innerSymbols = mutable.HashSet[String]()
-
-    new Traverser {
-      override def apply(tree: Tree): Unit = tree match {
-        case t =>
-          val symbol = t.symbol
-          if (symbol.isGlobal) {
-            innerSymbols += symbol.value
-          }
-          super.apply(tree)
-      }
-    }.apply(d.body)
-
-    FunctionEdge(argsTypes, returnType, innerSymbols.toList)
+    FunctionEdge(argsTypes, returnType, innerSymbols)
   }
 }
 
 final case class ClassTraitEdge(ctorArgsTypes: List[String],
                                 parentsTypes: List[String],
-                                innerDefns: List[String])
+                                innerDefns: List[String],
+                                innerSymbols: List[String])
     extends FlowEdge
 
 object ClassTraitEdge {
   private def fromCtorAndName(ctor: Ctor.Primary, name: Type.Name)(
-      implicit semDoc: SemanticDocument): ClassTraitEdge = {
+      implicit semDoc: SemanticDocument)
+    : (List[String], List[String], List[String]) = {
     val ctorArgsTypes =
       ctor.paramss.flatten
         .flatMap(_.decltpe)
@@ -85,19 +98,30 @@ object ClassTraitEdge {
       }
       .getOrElse((List.empty, List.empty))
 
-    ClassTraitEdge(ctorArgsTypes, parentTypes, innerDefns)
+    (ctorArgsTypes, parentTypes, innerDefns)
   }
 
   def fromDefn(d: Defn.Class)(
-      implicit semDoc: SemanticDocument): ClassTraitEdge =
-    fromCtorAndName(d.ctor, d.name)
+      implicit semDoc: SemanticDocument): ClassTraitEdge = {
+    val (ctorArgsTypes, parentTypes, innerDefns) =
+      fromCtorAndName(d.ctor, d.name)
+    val innerSymbols = d.templ.stats
+      .flatMap(FlowEdge.symbolsFromBody(_, skipSymbols = innerDefns))
+
+    ClassTraitEdge(ctorArgsTypes, parentTypes, innerDefns, innerSymbols)
+  }
 
   def fromDefn(d: Defn.Trait)(
-      implicit semDoc: SemanticDocument): ClassTraitEdge =
-    fromCtorAndName(d.ctor, d.name)
+      implicit semDoc: SemanticDocument): ClassTraitEdge = {
+    val (ctorArgsTypes, parentTypes, innerDefns) =
+      fromCtorAndName(d.ctor, d.name)
+    ClassTraitEdge(ctorArgsTypes, parentTypes, innerDefns, List.empty)
+  }
 }
 
-final case class ObjectEdge(innerDefns: List[String]) extends FlowEdge
+final case class ObjectEdge(innerDefns: List[String],
+                            innerSymbols: List[String])
+    extends FlowEdge
 
 object ObjectEdge {
   def fromDefn(d: Defn.Object)(
@@ -108,12 +132,14 @@ object ObjectEdge {
         case ClassSignature(_, _, _, decls) => decls.map(_.symbol.value)
       }
       .getOrElse(List.empty)
+    val innerSymbols = d.templ.stats
+      .flatMap(FlowEdge.symbolsFromBody(_, skipSymbols = innerDefns))
 
-    ObjectEdge(innerDefns)
+    ObjectEdge(innerDefns, innerSymbols)
   }
 }
 
-final case class ValVarEdge(innerSymbols: List[String]) extends FlowEdge
+final case class ValVarEdge(innerSymbols: List[String]) extends FlowEdge // only Terms
 
 object ValVarEdge {
   val empty = ValVarEdge(List.empty)
@@ -126,7 +152,7 @@ object ValVarEdge {
       override def apply(tree: Tree): Unit = tree match {
         case t =>
           val symbol = t.symbol
-          if (symbol.isGlobal) {
+          if (symbol.value.isGlobal && symbol.value.isTerm) {
             innerSymbols += symbol.value
           }
       }
