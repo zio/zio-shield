@@ -1,4 +1,4 @@
-# ZIO Shield
+# ZIO Shield :shield:
 [![Build Status](https://travis-ci.com/vovapolu/zio-shield.svg?token=v3sLpmndNBqRuuwBdToF&branch=master)](https://travis-ci.com/vovapolu/zio-shield)
 
 ZIO Shield statically analyses the source code, enforcing best coding practices with ZIO.  
@@ -11,12 +11,14 @@ Powered by [Scalafix](https://scalacenter.github.io/scalafix/) and [Scalazzi rul
 ### sbt
 Add `zio-shield` sbt plugin to your `project/plugins.sbt`:
 ```sbt
-addSbtPlugin("zio.shield" % "zio-shield" % "<version>")
+resolvers += Resolver.sonatypeRepo("snapshots")
+addSbtPlugin("com.github.vovapolu" % "zio-shield" % "0.1.0-SNAPSHOT")
 ```
 
 It will add `semanticdb-scalac` compiler plugin and `-Yrangepos` scalac option 
-to your project settings in order to generate [SemanticDb](https://scalameta.org/docs/semanticdb/guide.html) 
-files necessary for static analysis.  
+to your project settings if they doesn't exist. 
+They are needed to generate [SemanticDb](https://scalameta.org/docs/semanticdb/guide.html) 
+files for static analysis.  
 
 #### Usage
 
@@ -79,8 +81,14 @@ shieldFatalWarnings := true
 ...
 ```
 
+To exlude specific [rules](#rules) from analysis you can create `.shield.yaml` file in the project root and specify `exludedRules` option. 
+```yaml
+# .shield.yaml
+excludedRules: [ZioShieldNoIgnoredExpressions]
+```
+
 ### metals
-TBD
+:construction: _Under construction_ :construction: 
 
 ## Rules 
 - `ZioShieldNoFutureMethods` blocks any `val` or `def` that has type of `Future[...]`
