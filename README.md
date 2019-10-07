@@ -88,7 +88,25 @@ excludedRules: [ZioShieldNoIgnoredExpressions]
 ```
 
 ### metals
-:construction: _Under construction_ :construction: 
+For using ZIO Shield with metals you should provide custom version of metals language server. 
+
+In vscode it can be done in your `settings.json`:
+```json
+  "metals.customRepositories": ["central", "bintray:vovapolu/maven"],
+  "metals.serverVersion": "0.7.6-zio-shield-RC0"
+```
+And then run `Metals: Restart server` command or just restart the editor.
+
+![metals1](docs/images/metals1.png)
+
+
+![metals2](docs/images/metals2.png)
+
+#### Troubleshooting
+
+- **Warnings are not shown**
+
+  Run `Metals: Import build` in vscode. If it doesn't help restart the editor and try again. 
 
 ## Rules 
 - `ZioShieldNoFutureMethods` blocks any `val` or `def` that has type of `Future[...]`
