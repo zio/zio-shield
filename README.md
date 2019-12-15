@@ -11,8 +11,7 @@ Powered by [Scalafix](https://scalacenter.github.io/scalafix/) and [Scalazzi rul
 ### sbt
 Add `zio-shield` sbt plugin to your `project/plugins.sbt`:
 ```sbt
-resolvers += Resolver.sonatypeRepo("snapshots")
-addSbtPlugin("com.github.vovapolu" % "zio-shield" % "0.1.0-SNAPSHOT")
+addSbtPlugin("dev.zio" % "zio-shield" % "0.1.0")
 ```
 
 It will add `semanticdb-scalac` compiler plugin and `-Yrangepos` scalac option 
