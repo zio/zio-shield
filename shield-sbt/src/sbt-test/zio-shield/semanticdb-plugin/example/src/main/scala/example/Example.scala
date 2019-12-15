@@ -9,6 +9,10 @@ object Example {
     }
   }
 
+  def nullable(foo: String): String = null
+
+  def safeF(bar: String): String = nullable(bar)
+
   defBodyNullable("foo")
 
   1.asInstanceOf[Long]

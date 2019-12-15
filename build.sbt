@@ -3,17 +3,34 @@ import Dependencies._
 inThisBuild(
   Seq(
     scalaVersion := scala212,
-    organization := "zio.shield",
-    version := "0.1.0-SNAPSHOT",
+    organization := "dev.zio",
+    homepage := Some(url("https://github.com/zio/zio-shield")),
     licenses := Seq(
       "Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")
+    ),
+    pgpPublicRing := file("/tmp/public.asc"),
+    pgpSecretRing := file("/tmp/secret.asc"),
+    pgpPassphrase := sys.env.get("PGP_PASSWORD").map(_.toArray),
+    scmInfo := Some(
+      ScmInfo(url("https://github.com/zio/zio-shield/"), "scm:git:git@github.com:zio/zio-shield.git")
+    ),
+    developers := List(
+      Developer(
+        "vovapolu",
+        "Vladimir Polushin",
+        "vovapolu@gmail.com",
+        url("https://github.com/vovapolu")
+      )
     )
   )
 )
 
+ThisBuild / publishTo := sonatypePublishToBundle.value
+
 lazy val shieldApi = (project in file("shield-api"))
+  .enablePlugins(GitVersioning)
   .settings(
-    moduleName := "zio-shield-api",
+    name := "zio-shield-api",
     libraryDependencies ++= Seq(
       scalafixCore,
       scalafixRules,
@@ -29,9 +46,10 @@ lazy val shieldApi = (project in file("shield-api"))
 
 lazy val shieldSbt = (project in file("shield-sbt"))
   .enablePlugins(SbtPlugin)
+  .enablePlugins(GitVersioning)
   .dependsOn(shieldApi)
   .settings(
-    moduleName := "zio-shield",
+    name := "zio-shield",
     scriptedBufferLog := false,
     scriptedLaunchOpts ++= Seq(
       "-Xmx2048M",
@@ -42,7 +60,7 @@ lazy val shieldSbt = (project in file("shield-sbt"))
 lazy val shieldTests = (project in file("shield-tests"))
   .dependsOn(shieldApi) // for direct semantic document loading
   .settings(
-    moduleName := "zio-shield-tests",
+    name := "zio-shield-tests",
     skip in publish := true,
     libraryDependencies ++= Seq(
       utest % "test",
@@ -57,7 +75,7 @@ lazy val shieldTests = (project in file("shield-tests"))
 
 lazy val shieldDetector = (project in file("shield-detector"))
   .settings(
-    moduleName := "zio-shield-detector",
+    name := "zio-shield-detector",
     skip in publish := true,
     libraryDependencies ++= Seq(
       "org.reflections" % "reflections" % "0.9.11"

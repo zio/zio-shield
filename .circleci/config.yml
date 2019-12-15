@@ -1,0 +1,43 @@
+version: 2.1
+jobs:
+  test:
+    docker:
+      - image: hseeberger/scala-sbt:8u222_1.3.4_2.12.10
+    steps:
+      - checkout
+      - restore_cache:
+          key: sbt-cache
+      - run: sbt test
+      - save_cache:
+          key: sbt-cache
+          paths:
+            - "~/.ivy2/cache"
+            - "~/.sbt"
+            - "~/.m2"
+  release:
+    docker:
+      - image: hseeberger/scala-sbt:8u222_1.3.4_2.12.10
+    steps:
+      - checkout
+      - run: git fetch --tags
+      - restore_cache:
+          key: sbt-cache
+      - run: echo -n "${PGP_PUBLIC}" | base64 -d > /tmp/public.asc
+      - run: echo -n "${PGP_SECRET}" | base64 -d > /tmp/secret.asc
+      - run: echo "credentials += Credentials(\"Sonatype Nexus Repository Manager\", \"oss.sonatype.org\", \"$SONATYPE_USER\", \"$SONATYPE_PASSWORD\")" > ~/.sbt/1.0/sonatype.sbt
+      - run: sbt clean sonatypeBundleClean +publishSigned sonatypeBundleRelease
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - test
+      - release:
+          context: Sonatype
+          requires:
+            - test
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
