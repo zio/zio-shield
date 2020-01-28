@@ -47,11 +47,9 @@ object ZioShieldNoIndirectUse extends FlowRule {
     new ContextTraverser[Patch, Boolean](false)({
       // TODO currently there is no way to detect if the method overrides pure interface
       // we skip all the classes that extends pure interfaces, but that's wrong in some cases
-      case (d: Defn.Class, false)
-          if pureInterfaceOrImplementationParents(d.name.symbol).nonEmpty =>
+      case (d: Defn.Class, false) if pureInterfaceOrImplementationParents(d.name.symbol).nonEmpty =>
         Right(true)
-      case (d: Defn.Trait, false)
-          if pureInterfaceOrImplementationParents(d.name.symbol).nonEmpty =>
+      case (d: Defn.Trait, false) if pureInterfaceOrImplementationParents(d.name.symbol).nonEmpty =>
         Right(true)
       case (t, false) if noEffectful.isDefinedAt(t) =>
         Left(noEffectful(t))

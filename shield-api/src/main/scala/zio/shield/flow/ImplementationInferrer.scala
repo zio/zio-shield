@@ -1,14 +1,12 @@
 package zio.shield.flow
 
-import zio.shield.tag.{Tag, TagProof, TagProp}
+import zio.shield.tag.{ Tag, TagProof, TagProp }
 
-case object ImplementationInferrer
-    extends FlowInferrer[Tag.Implementaion.type] {
+case object ImplementationInferrer extends FlowInferrer[Tag.Implementaion.type] {
 
   val name: String = toString
 
-  def infer(flowCache: FlowCache)(
-      symbol: String): TagProp[Tag.Implementaion.type] = {
+  def infer(flowCache: FlowCache)(symbol: String): TagProp[Tag.Implementaion.type] = {
 
     val pureInterfaceOrImplementationParents =
       flowCache.edges.get(symbol) match {
@@ -23,7 +21,7 @@ case object ImplementationInferrer
       }
 
     val proofs = List(
-      TagProof.SymbolsProof.fromSymbols(pureInterfaceOrImplementationParents),
+      TagProof.SymbolsProof.fromSymbols(pureInterfaceOrImplementationParents)
     ).flatten
 
     if (proofs.nonEmpty) TagProp(Tag.Implementaion, cond = true, proofs)
@@ -32,11 +30,11 @@ case object ImplementationInferrer
 
   def dependentSymbols(edge: FlowEdge): List[String] = edge match {
     case ClassTraitEdge(_, parentsTypes, _, _) => parentsTypes
-    case _                                  => List.empty
+    case _                                     => List.empty
   }
 
   def isInferable(symbol: String, edge: FlowEdge): Boolean = edge match {
     case ClassTraitEdge(_, _, _, _) => true
-    case _                       => false
+    case _                          => false
   }
 }

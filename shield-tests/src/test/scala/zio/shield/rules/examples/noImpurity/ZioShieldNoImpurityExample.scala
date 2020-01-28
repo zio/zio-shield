@@ -3,9 +3,8 @@ package zio.shield.rules.examples.noImpurity
 import zio.Task
 
 object ZioShieldNoImpurityExample {
-  def boom(): Unit = {
+  def boom(): Unit =
     println("boom")
-  }
 
   println("abc")
   println()

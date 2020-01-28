@@ -30,16 +30,18 @@ ThisBuild / publishTo := sonatypePublishToBundle.value
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-lazy val root =
-  (project in file("."))
-    .settings(
-      stdSettings("zio-shield")
-    )
-    .settings(buildInfoSettings("zio.shield"))
-    .enablePlugins(BuildInfoPlugin)
+lazy val root = project
+  .in(file("."))
+  .settings(buildInfoSettings("zio.shield"))
+  .enablePlugins(BuildInfoPlugin)
+  .aggregate(shieldApi, shieldSbt, shieldTests, shieldDetector, docs)
 
-lazy val shieldApi = (project in file("shield-api"))
+lazy val shieldApi = project
+  .in(file("shield-api"))
   .enablePlugins(GitVersioning)
+  .settings(
+    stdSettings("zio-shield")
+  )
   .settings(
     name := "zio-shield-api",
     libraryDependencies ++= Seq(
@@ -55,9 +57,8 @@ lazy val shieldApi = (project in file("shield-api"))
     testFrameworks += new TestFramework("utest.runner.Framework")
   )
 
-lazy val shieldSbt = (project in file("shield-sbt"))
-  .enablePlugins(SbtPlugin)
-  .enablePlugins(GitVersioning)
+lazy val shieldSbt = project
+  .in(file("shield-sbt"))
   .dependsOn(shieldApi)
   .settings(
     name := "zio-shield",
@@ -67,8 +68,10 @@ lazy val shieldSbt = (project in file("shield-sbt"))
       s"-Dplugin.version=${version.value}"
     )
   )
+  .enablePlugins(SbtPlugin, GitVersioning)
 
-lazy val shieldTests = (project in file("shield-tests"))
+lazy val shieldTests = project
+  .in(file("shield-tests"))
   .dependsOn(shieldApi) // for direct semantic document loading
   .settings(
     name := "zio-shield-tests",
@@ -83,7 +86,8 @@ lazy val shieldTests = (project in file("shield-tests"))
     testFrameworks += new TestFramework("utest.runner.Framework")
   )
 
-lazy val shieldDetector = (project in file("shield-detector"))
+lazy val shieldDetector = project
+  .in(file("shield-detector"))
   .settings(
     name := "zio-shield-detector",
     skip in publish := true,
@@ -93,18 +97,15 @@ lazy val shieldDetector = (project in file("shield-detector"))
   )
 
 lazy val docs = project
-  .in(file("zio-shield-docs"))
+  .in(file("docs"))
   .settings(
-    skip.in(publish) := true,
+    skip in publish := true,
     moduleName := "zio-shield-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    libraryDependencies += Dependencies.zio,
-    unidocProjectFilter in (ScalaUnidoc, unidoc) := inProjects(root),
     target in (ScalaUnidoc, unidoc) := (baseDirectory in LocalRootProject).value / "website" / "static" / "api",
     cleanFiles += (target in (ScalaUnidoc, unidoc)).value,
     docusaurusCreateSite := docusaurusCreateSite.dependsOn(unidoc in Compile).value,
     docusaurusPublishGhpages := docusaurusPublishGhpages.dependsOn(unidoc in Compile).value
   )
-  .dependsOn(root)
   .enablePlugins(MdocPlugin, DocusaurusPlugin, ScalaUnidocPlugin)

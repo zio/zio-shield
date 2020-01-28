@@ -2,7 +2,7 @@ package zio.shield.rules.examples.noIndirectUse
 
 import zio.shield.rules.examples.noIndirectUse.Implementations.FooImpl
 import zio.shield.rules.examples.noIndirectUse.PureInterfaces.Foo
-import zio.{Task, UIO, ZIO}
+import zio.{ Task, UIO, ZIO }
 
 object BuisnessLogic {
   def logic(foo: Foo): UIO[Unit] = foo.bar

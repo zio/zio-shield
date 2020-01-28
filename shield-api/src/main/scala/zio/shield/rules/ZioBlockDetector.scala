@@ -6,21 +6,16 @@ import scalafix.v1._
 import scala.annotation.tailrec
 import scala.meta._
 
-class ZioBlockDetector private (
-    outsideBlock: PartialFunction[Tree, List[Patch]])(
-    implicit doc: SemanticDocument) {
+class ZioBlockDetector private (outsideBlock: PartialFunction[Tree, List[Patch]])(implicit doc: SemanticDocument) {
 
   import ZioBlockDetector._
 
-  def traverse(tree: meta.Tree, ignoreInZioBlocks: Boolean = true): Patch = {
+  def traverse(tree: meta.Tree, ignoreInZioBlocks: Boolean = true): Patch =
     new ContextTraverser[List[Patch], Boolean](false)({
       case (_: Import, _) => Right(false)
-      case (Term.Apply(
-              Term.Select(safeBlocksMatcher(block), Term.Name("apply")),
-              _),
-            _) if ignoreInZioBlocks =>
+      case (Term.Apply(Term.Select(safeBlocksMatcher(_), Term.Name("apply")), _), _) if ignoreInZioBlocks =>
         Right(true) // <Block>.apply
-      case (Term.Apply(safeBlocksMatcher(block), _), _) if ignoreInZioBlocks =>
+      case (Term.Apply(safeBlocksMatcher(_), _), _) if ignoreInZioBlocks =>
         Right(true) // <Block>(...)
       // this might be useful in "smarter" search
       // case (_: Defn.Def, _) =>
@@ -29,17 +24,14 @@ class ZioBlockDetector private (
       //   Right(false) // reset blocked symbols in (...) => (...)
       case (x, false) if outsideBlock.isDefinedAt(x) => Left(outsideBlock(x))
     }).result(tree).flatten.asPatch
-  }
 }
 
 object ZioBlockDetector {
 
-  def apply(outsideBlock: PartialFunction[Tree, List[Patch]])(
-      implicit doc: SemanticDocument): ZioBlockDetector =
+  def apply(outsideBlock: PartialFunction[Tree, List[Patch]])(implicit doc: SemanticDocument): ZioBlockDetector =
     new ZioBlockDetector(outsideBlock)
 
-  def fromSingleLintPerTree(outsideBlock: PartialFunction[Tree, Patch])(
-      implicit doc: SemanticDocument) =
+  def fromSingleLintPerTree(outsideBlock: PartialFunction[Tree, Patch])(implicit doc: SemanticDocument) =
     new ZioBlockDetector(outsideBlock.andThen(List(_)))
 
   val safeBlocks = List(
@@ -89,16 +81,15 @@ object ZioBlockDetector {
 
   def safeBlockDetector(tree: Tree)(implicit doc: SemanticDocument): Boolean =
     tree match {
-      case Term.Apply(Term.Select(safeBlocksMatcher(block), Term.Name("apply")),
-                      _) =>
+      case Term.Apply(Term.Select(safeBlocksMatcher(_), Term.Name("apply")), _) =>
         true
-      case Term.Apply(safeBlocksMatcher(block), _) => true
-      case _                                       => false
+      case Term.Apply(safeBlocksMatcher(_), _) => true
+      case _                                   => false
     }
 
-  def lintFunction(matcher: Symbol => Boolean)(
-      lintMessage: PartialFunction[Symbol, String])(
-      implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
+  def lintFunction(
+    matcher: Symbol => Boolean
+  )(lintMessage: PartialFunction[Symbol, String])(implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
 
     @tailrec
     def skipTermSelect(term: Term): Boolean = term match {
@@ -110,44 +101,35 @@ object ZioBlockDetector {
     def processName(name: Name): Option[Patch] = {
       val s = name.symbol
       if (matcher(s))
-        Some(
-          Patch.lint(
-            Diagnostic("",
-                       lintMessage.applyOrElse(s,
-                                               (_: Symbol) =>
-                                                 s"${s.value} is blocked"),
-                       name.pos)))
+        Some(Patch.lint(Diagnostic("", lintMessage.applyOrElse(s, (_: Symbol) => s"${s.value} is blocked"), name.pos)))
       else None
     }
 
     {
-      case Term.Select(q, name)
-          if skipTermSelect(q) && processName(name).isDefined =>
+      case Term.Select(q, name) if skipTermSelect(q) && processName(name).isDefined =>
         processName(name).get
-      case Type.Select(q, name)
-          if skipTermSelect(q) && processName(name).isDefined =>
+      case Type.Select(q, name) if skipTermSelect(q) && processName(name).isDefined =>
         processName(name).get
       case name: Name if processName(name).isDefined => processName(name).get
     }
   }
 
-  def lintSymbols(symbols: List[String])(
-      lintMessage: PartialFunction[Symbol, String])(
-      implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
+  def lintSymbols(
+    symbols: List[String]
+  )(lintMessage: PartialFunction[Symbol, String])(implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
     val symbolMatcher = SymbolMatcher.normalized(symbols: _*)
     lintFunction(symbolMatcher.matches)(lintMessage)
   }
 
-  def lintPrefixes(prefixes: List[String])(
-      lintMessage: PartialFunction[Symbol, String])(
-      implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
+  def lintPrefixes(
+    prefixes: List[String]
+  )(lintMessage: PartialFunction[Symbol, String])(implicit doc: SemanticDocument): PartialFunction[Tree, Patch] =
     lintFunction { s =>
       prefixes.exists(s.value.startsWith)
     }(lintMessage)
-  }
 
-  def lintPrefix(prefix: String)(lintMessage: PartialFunction[Symbol, String])(
-      implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
+  def lintPrefix(
+    prefix: String
+  )(lintMessage: PartialFunction[Symbol, String])(implicit doc: SemanticDocument): PartialFunction[Tree, Patch] =
     lintPrefixes(List(prefix))(lintMessage)
-  }
 }

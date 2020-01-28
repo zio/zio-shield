@@ -42,7 +42,8 @@ object BuildHelper {
     "-Ywarn-infer-any",
     "-Ywarn-inaccessible",
     "-Ywarn-nullary-unit",
-    "-Ywarn-unused-import"
+    "-Ywarn-unused-import",
+    "-language:reflectiveCalls" //TODO: review this
   )
 
   private def extraOptions(scalaVersion: String) =

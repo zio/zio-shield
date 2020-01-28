@@ -49,35 +49,17 @@ object TagProp {
   def fromAnnotationSymbol(symbol: String): Option[TagProp[_]] =
     symbol match {
       case "zio/shield/annotation/package.nullable#" =>
-        Some(
-          TagProp(Tag.Nullable,
-                  cond = true,
-                  List(TagProof.AnnotationProof(symbol))))
+        Some(TagProp(Tag.Nullable, cond = true, List(TagProof.AnnotationProof(symbol))))
       case "zio/shield/annotation/package.nonNullable#" =>
-        Some(
-          TagProp(Tag.Nullable,
-                  cond = false,
-                  List(TagProof.AnnotationProof(symbol))))
+        Some(TagProp(Tag.Nullable, cond = false, List(TagProof.AnnotationProof(symbol))))
       case "zio/shield/annotation/package.pure#" =>
-        Some(
-          TagProp(Tag.Impure,
-                  cond = false,
-                  List(TagProof.AnnotationProof(symbol))))
+        Some(TagProp(Tag.Impure, cond = false, List(TagProof.AnnotationProof(symbol))))
       case "zio/shield/annotation/package.impure#" =>
-        Some(
-          TagProp(Tag.Impure,
-                  cond = true,
-                  List(TagProof.AnnotationProof(symbol))))
+        Some(TagProp(Tag.Impure, cond = true, List(TagProof.AnnotationProof(symbol))))
       case "zio/shield/annotation/package.total#" =>
-        Some(
-          TagProp(Tag.Partial,
-                  cond = false,
-                  List(TagProof.AnnotationProof(symbol))))
+        Some(TagProp(Tag.Partial, cond = false, List(TagProof.AnnotationProof(symbol))))
       case "zio/shield/annotation/package.partial#" =>
-        Some(
-          TagProp(Tag.Partial,
-                  cond = true,
-                  List(TagProof.AnnotationProof(symbol))))
+        Some(TagProp(Tag.Partial, cond = true, List(TagProof.AnnotationProof(symbol))))
       case _ => None
     }
 }

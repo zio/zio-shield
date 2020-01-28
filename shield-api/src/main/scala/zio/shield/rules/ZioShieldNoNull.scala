@@ -1,7 +1,7 @@
 package zio.shield.rules
 
 import scalafix.v1._
-import zio.shield.flow.{FlowCache, FlowInferrer, NullabilityInferrer}
+import zio.shield.flow.{ FlowCache, NullabilityInferrer }
 import zio.shield.tag.Tag
 
 import scala.meta._
@@ -14,8 +14,7 @@ object ZioShieldNoNull extends FlowRule {
   def fix(cache: FlowCache)(implicit doc: SemanticDocument): Patch = {
 
     val pf: PartialFunction[Tree, Patch] =
-      ZioBlockDetector.lintFunction(s =>
-        cache.searchTag(Tag.Nullable)(s.value).getOrElse(false)) {
+      ZioBlockDetector.lintFunction(s => cache.searchTag(Tag.Nullable)(s.value).getOrElse(false)) {
         case _ => "possibly nullable" // TODO print proof
       } orElse {
         case l: Lit.Null =>

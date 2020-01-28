@@ -11,8 +11,7 @@ object ZioShieldNoReflection extends SemanticRule("ZioShieldNoReflection") {
       ZioBlockDetector.lintPrefix("scala/reflect") {
         case _ => "scala reflection"
       } orElse
-        ZioBlockDetector.lintPrefixes(
-          List("java/lang/reflect", "java/lang/Class")) {
+        ZioBlockDetector.lintPrefixes(List("java/lang/reflect", "java/lang/Class")) {
           case _ => "java reflection"
         }
 

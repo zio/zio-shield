@@ -1,11 +1,11 @@
 package zio.shield.rules
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{ Files, Path, Paths }
 
 import scalafix.v1.Rule
 import utest._
 import zio.shield.semdocs.DirectSemanticDocumentLoader
-import zio.shield.{ConfiguredZioShield, ZioShield, ZioShieldDiagnostic}
+import zio.shield.{ ConfiguredZioShield, ZioShield, ZioShieldDiagnostic }
 
 import scala.collection.mutable
 import scala.io.Source
@@ -28,11 +28,8 @@ object ConsoleMessagesTest extends TestSuite {
 
   val verbose = true
 
-  def consoleMessageTest(rules: List[Rule],
-                         flowRules: List[FlowRule],
-                         path: Path): Unit = {
-    val zioShield = ConfiguredZioShield(
-      DirectSemanticDocumentLoader(fullClasspath))(List.empty, rules, flowRules)
+  def consoleMessageTest(rules: List[Rule], flowRules: List[FlowRule], path: Path): Unit = {
+    val zioShield = ConfiguredZioShield(DirectSemanticDocumentLoader(fullClasspath))(List.empty, rules, flowRules)
     runWithZioShield(zioShield, path)
   }
 
@@ -42,22 +39,21 @@ object ConsoleMessagesTest extends TestSuite {
   def consoleMessageTest(rule: Rule, path: Path): Unit =
     consoleMessageTest(List(rule), List.empty, path)
 
-  private def runWithZioShield(zioShield: ConfiguredZioShield,
-                               path: Path): Unit = {
+  private def runWithZioShield(zioShield: ConfiguredZioShield, path: Path): Unit = {
     val (parent, name, srcPaths) = if (Files.isDirectory(path)) {
       import scala.collection.JavaConverters._
-      (path,
-       path.getFileName.toString,
-       Files
-         .list(path)
-         .filter(f => Files.isRegularFile(f))
-         .iterator()
-         .asScala
-         .toList)
+      (
+        path,
+        path.getFileName.toString,
+        Files
+          .list(path)
+          .filter(f => Files.isRegularFile(f))
+          .iterator()
+          .asScala
+          .toList
+      )
     } else if (Files.isRegularFile(path)) {
-      (path.getParent,
-       path.getFileName.toString.stripSuffix(".scala"),
-       List(path))
+      (path.getParent, path.getFileName.toString.stripSuffix(".scala"), List(path))
     } else (Paths.get("/"), "", List.empty)
 
     val consoleMessages = {
@@ -66,17 +62,15 @@ object ConsoleMessagesTest extends TestSuite {
       zioShield.updateCache(srcPaths)(diagnostics += _)
       zioShield.run(srcPaths)(diagnostics += _)
 
-      diagnostics
-        .sortWith {
-          case (d1, d2) =>
-            val pathCmp = d1.path.compareTo(d2.path)
-            if (pathCmp != 0) {
-              pathCmp < 0
-            } else {
-              d1.consoleMessage.compareTo(d1.consoleMessage) < 0
-            }
-        }
-        .map(_.consoleMessage.stripPrefix(s"${parent.toString}/"))
+      diagnostics.sortWith {
+        case (d1, d2) =>
+          val pathCmp = d1.path.compareTo(d2.path)
+          if (pathCmp != 0) {
+            pathCmp < 0
+          } else {
+            d1.consoleMessage.compareTo(d1.consoleMessage) < 0
+          }
+      }.map(_.consoleMessage.stripPrefix(s"${parent.toString}/"))
     }
 
     val messagesResource =
@@ -103,12 +97,10 @@ object ConsoleMessagesTest extends TestSuite {
   val tests = Tests {
 
     def autoSrcPath(implicit utestPath: utest.framework.TestPath) =
-      testsPath.resolve(
-        s"shield-tests/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}.scala")
+      testsPath.resolve(s"shield-tests/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}.scala")
 
     def autoDirPath(implicit utestPath: utest.framework.TestPath) =
-      testsPath.resolve(
-        s"shield-tests/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}")
+      testsPath.resolve(s"shield-tests/src/test/scala/zio/shield/rules/examples/${utestPath.value.last}")
 
     test("ZioShieldNoFutureMethodsExample") {
       consoleMessageTest(ZioShieldNoFutureMethods, autoSrcPath)
@@ -135,9 +127,7 @@ object ConsoleMessagesTest extends TestSuite {
       consoleMessageTest(ZioShieldNoReflection, autoSrcPath)
     }
     test("ZioShieldShowcase") {
-      consoleMessageTest(ZioShield.allSemanticRules,
-                         ZioShield.allFlowRules,
-                         autoSrcPath)
+      consoleMessageTest(ZioShield.allSemanticRules, ZioShield.allFlowRules, autoSrcPath)
     }
     test("ZioShieldBlocks") {
       consoleMessageTest(ZioShieldNoImpurity, autoSrcPath)

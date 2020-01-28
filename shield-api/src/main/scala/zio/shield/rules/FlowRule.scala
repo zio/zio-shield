@@ -1,7 +1,7 @@
 package zio.shield.rules
 
 import scalafix.v1._
-import zio.shield.flow.{FlowCache, FlowInferrer}
+import zio.shield.flow.{ FlowCache, FlowInferrer }
 
 trait FlowRule { flowRule =>
   def name: String

@@ -16,15 +16,13 @@ object ZioShieldShowcase {
 
   def sendImportantRequest(data: String): Unit = ???
 
-  def alwaysGood(): Response = {
+  def alwaysGood(): Response =
     GoodResponse("it's good, believe me")
-  }
 
-  def nullable(): Response = {
+  def nullable(): Response =
     GoodResponse(null)
-  }
 
-  def handleResponse(response: Response): Unit = {
+  def handleResponse(response: Response): Unit =
     if (response.isInstanceOf[BadResponse]) {
       val badResponse = response.asInstanceOf[BadResponse]
 
@@ -42,5 +40,4 @@ object ZioShieldShowcase {
         println(s"Total sum: $sum")
       }
     }
-  }
 }
