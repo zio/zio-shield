@@ -7,7 +7,7 @@ ZioShieldNoTypeCastingExample.scala:7:5: error: type casting
     ^^^^^^^^^^^^
 ---
 ZioShieldNoTypeCastingExample.scala:9:10: error: pattern match against type
-    case i: Int => i.toLong
+    case i: Int  => i.toLong
          ^^^^^^
 ---
 ZioShieldNoTypeCastingExample.scala:10:10: error: pattern match against type

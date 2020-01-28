@@ -1,16 +1,16 @@
-BuisnessLogic.scala:25:7: error: effectful: ZIO effects usage outside of pure interface or implementation
+BusinessLogic.scala:25:7: error: effectful: ZIO effects usage outside of pure interface or implementation
   def logicBad(foo: Foo): Task[Unit] = foo.bar *> ZIO.effect(println("Hello"))
       ^^^^^^^^
 ---
-BuisnessLogic.scala:28:9: error: effectful: ZIO effects usage outside of pure interface or implementation
+BusinessLogic.scala:28:9: error: effectful: ZIO effects usage outside of pure interface or implementation
     def bar: UIO[Unit] = foo.bar
         ^^^
 ---
-BuisnessLogic.scala:28:30: error: effectful: ZIO effects usage outside of pure interface or implementation
+BusinessLogic.scala:28:30: error: effectful: ZIO effects usage outside of pure interface or implementation
     def bar: UIO[Unit] = foo.bar
                              ^^^
 ---
-BuisnessLogic.scala:31:61: error: effectful: ZIO effects usage outside of pure interface or implementation
+BusinessLogic.scala:31:61: error: effectful: ZIO effects usage outside of pure interface or implementation
   val doBarBad: ZIO[FooImpl, Nothing, Unit] = ZIO.accessM(_.bar)
                                                             ^^^
 ---

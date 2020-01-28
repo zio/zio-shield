@@ -14,6 +14,10 @@ ZioShieldNoNullExample.scala:11:27: error: possibly nullable
   ZioShieldNoNullExample2.defBodyNullable("foo")
                           ^^^^^^^^^^^^^^^
 ---
+ZioShieldNoNullExample.scala:13:27: error: possibly nullable
+  ZioShieldNoNullExample2.annotatedNonNullable("foo")
+                          ^^^^^^^^^^^^^^^^^^^^
+---
 ZioShieldNoNullExample.scala:14:27: error: possibly nullable
   ZioShieldNoNullExample2.valBodyNullable
                           ^^^^^^^^^^^^^^^
@@ -31,29 +35,33 @@ ZioShieldNoNullExample2.scala:8:48: error: nullable: null usage
                                                ^^^^
 ---
 ZioShieldNoNullExample2.scala:10:7: error: possibly nullable
-  def defBodyNullable(foo: String): String = {
+  def defBodyNullable(foo: String): String =
       ^^^^^^^^^^^^^^^
 ---
 ZioShieldNoNullExample2.scala:14:7: error: nullable: null usage
       null
       ^^^^
 ---
-ZioShieldNoNullExample2.scala:21:51: error: nullable: null usage
+ZioShieldNoNullExample2.scala:20:7: error: possibly nullable
+  def annotatedNonNullable(foo: String): String = null
+      ^^^^^^^^^^^^^^^^^^^^
+---
+ZioShieldNoNullExample2.scala:20:51: error: nullable: null usage
   def annotatedNonNullable(foo: String): String = null
                                                   ^^^^
 ---
-ZioShieldNoNullExample2.scala:23:7: error: possibly nullable
+ZioShieldNoNullExample2.scala:22:7: error: possibly nullable
   val valBodyNullable = null
       ^^^^^^^^^^^^^^^
 ---
-ZioShieldNoNullExample2.scala:23:25: error: nullable: null usage
+ZioShieldNoNullExample2.scala:22:25: error: nullable: null usage
   val valBodyNullable = null
                         ^^^^
 ---
-ZioShieldNoNullExample2.scala:25:7: error: possibly nullable
-  def usingNullable(foo: String): String = {
+ZioShieldNoNullExample2.scala:24:7: error: possibly nullable
+  def usingNullable(foo: String): String =
       ^^^^^^^^^^^^^
 ---
-ZioShieldNoNullExample2.scala:29:7: error: possibly nullable
+ZioShieldNoNullExample2.scala:28:7: error: possibly nullable
       defBodyNullable(foo)
       ^^^^^^^^^^^^^^^
