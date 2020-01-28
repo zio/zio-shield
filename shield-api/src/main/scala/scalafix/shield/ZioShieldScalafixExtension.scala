@@ -39,7 +39,8 @@ class ZioShieldScalafixExtension(fullClasspath: List[Path]) {
           doc,
           AbsolutePath(path).toRelative(PathIO.workingDirectory),
           classLoader,
-          symtab
+          symtab,
+          () => None
         )
       }.toEither
     } yield doc

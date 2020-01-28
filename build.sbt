@@ -1,8 +1,8 @@
 import Dependencies._
+import BuildHelper._
 
 inThisBuild(
   Seq(
-    scalaVersion := scala212,
     organization := "dev.zio",
     homepage := Some(url("https://github.com/zio/zio-shield")),
     licenses := Seq(
@@ -26,6 +26,17 @@ inThisBuild(
 )
 
 ThisBuild / publishTo := sonatypePublishToBundle.value
+
+addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
+addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
+
+lazy val root =
+  (project in file("."))
+    .settings(
+      stdSettings("zio-shield")
+    )
+    .settings(buildInfoSettings("zio.shield"))
+    .enablePlugins(BuildInfoPlugin)
 
 lazy val shieldApi = (project in file("shield-api"))
   .enablePlugins(GitVersioning)
@@ -63,11 +74,10 @@ lazy val shieldTests = (project in file("shield-tests"))
     name := "zio-shield-tests",
     skip in publish := true,
     libraryDependencies ++= Seq(
-      utest % "test",
-      zio % "test",
+      utest      % "test",
+      zio        % "test",
       zioStreams % "test",
-      compilerPlugin(
-        "org.scalameta" % "semanticdb-scalac" % "4.2.3" cross CrossVersion.full)
+      compilerPlugin("org.scalameta" % "semanticdb-scalac" % "4.2.3" cross CrossVersion.full)
     ),
     scalacOptions += "-Yrangepos",
     testFrameworks += new TestFramework("utest.runner.Framework")
@@ -81,3 +91,20 @@ lazy val shieldDetector = (project in file("shield-detector"))
       "org.reflections" % "reflections" % "0.9.11"
     )
   )
+
+lazy val docs = project
+  .in(file("zio-shield-docs"))
+  .settings(
+    skip.in(publish) := true,
+    moduleName := "zio-shield-docs",
+    scalacOptions -= "-Yno-imports",
+    scalacOptions -= "-Xfatal-warnings",
+    libraryDependencies += Dependencies.zio,
+    unidocProjectFilter in (ScalaUnidoc, unidoc) := inProjects(root),
+    target in (ScalaUnidoc, unidoc) := (baseDirectory in LocalRootProject).value / "website" / "static" / "api",
+    cleanFiles += (target in (ScalaUnidoc, unidoc)).value,
+    docusaurusCreateSite := docusaurusCreateSite.dependsOn(unidoc in Compile).value,
+    docusaurusPublishGhpages := docusaurusPublishGhpages.dependsOn(unidoc in Compile).value
+  )
+  .dependsOn(root)
+  .enablePlugins(MdocPlugin, DocusaurusPlugin, ScalaUnidocPlugin)
