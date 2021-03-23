@@ -63,7 +63,8 @@ Running `shield` command will start the analysis.
 ...
 ```
 
-`ZioShieldShowcase.scala` source code located [here](shield-api/src/test/scala/zio/shield/rules/examples/ZioShieldShowcase.scala).
+`ZioShieldShowcase.scala` source code located [here](shield-tests/src/test/scala/zio/shield/rules/examples/ZioShieldShowcase.scala).
+
 
 #### Configuration
 
