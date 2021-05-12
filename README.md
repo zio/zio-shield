@@ -1,4 +1,9 @@
 # ZIO Shield :shield:
+
+| Project Stage                         |
+| ------------------------------------- |
+| [![Project stage][Stage]][Stage-Page] |
+
 [![Build Status](https://travis-ci.com/vovapolu/zio-shield.svg?token=v3sLpmndNBqRuuwBdToF&branch=master)](https://travis-ci.com/vovapolu/zio-shield)
 
 ZIO Shield statically analyses the source code, enforcing best coding practices with ZIO.  
@@ -119,3 +124,6 @@ expect when they are defined in ancestors of "pure" traits, i.e. traits without 
 - `ZioShieldNoPartial` blocks direct `throw` and `try {...} catch ...` usages and indirect usages through other methods except in `ZIO.effect*` blocks
 
 
+
+[Stage]: https://img.shields.io/badge/Project%20Stage-Experimental-yellow.svg
+[Stage-Page]: https://github.com/zio/zio/wiki/Project-Stages
