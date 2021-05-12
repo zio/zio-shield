@@ -76,7 +76,7 @@ object ZioShieldBlocks {
   RIO.effectAsync { (cb: RIO[Env, Val] => Unit) =>
     helloWorld()
   }
-  RIO.effectAsyncInterrupt { (cb: RIO[Env, Val] => Unit) =>
+  RIO.effectAsyncInterrupt { (cb: RIO[Any, Val] => Unit) =>
     helloWorld()
     Right(ZIO.unit)
   }
@@ -123,7 +123,7 @@ object ZioShieldBlocks {
   ZIO.effectAsync { (cb: ZIO[Env, Err, Val] => Unit) =>
     helloWorld()
   }
-  ZIO.effectAsyncInterrupt { (cb: ZIO[Env, Err, Val] => Unit) =>
+  ZIO.effectAsyncInterrupt { (cb: ZIO[Any, Err, Val] => Unit) =>
     helloWorld()
     Right(ZIO.unit)
   }
@@ -158,7 +158,7 @@ object ZioShieldBlocks {
   ZStream.effectAsync { (cb: ZIO[Env, Option[Err], Val] => Unit) =>
     helloWorld()
   }
-  ZStream.effectAsyncInterrupt { (cb: ZIO[Env, Option[Err], Val] => Unit) =>
+  ZStream.effectAsyncInterrupt { (cb: ZIO[Any, Option[Err], Val] => Unit) =>
     helloWorld()
     Right(ZStream.empty)
   }

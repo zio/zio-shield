@@ -7,7 +7,7 @@ object ZioShieldNoIgnoredExpressionsExample {
   123
   def boom = "boom!"
   boom
-  def nonIgnored = "it's okay"
+  def nonIgnored    = "it's okay"
   val nonIgnoredVal = 123
   class NonIgnoredClass {}
 
@@ -16,9 +16,8 @@ object ZioShieldNoIgnoredExpressionsExample {
     123
     def boom = "boom!"
     boom
-    def nonIgnored = "it's okay"
+    def nonIgnored    = "it's okay"
     val nonIgnoredVal = 123
     class NonIgnoredClass {}
   }
 }
-

@@ -7,11 +7,10 @@ object ConfigTest extends TestSuite {
     test("BasicConfig") {
       Config
         .fromString("""
-          |excludedRules: [ZioShieldNoIgnoredExpressions]
-          |excludedInferrers: [NullabilityInferrer]""".stripMargin)
+                      |excludedRules: [ZioShieldNoIgnoredExpressions]
+                      |excludedInferrers: [NullabilityInferrer]""".stripMargin)
         .right
-        .get ==> Config(List("ZioShieldNoIgnoredExpressions"),
-                        List("NullabilityInferrer"))
+        .get ==> Config(List("ZioShieldNoIgnoredExpressions"), List("NullabilityInferrer"))
     }
 
     test("NoExcludeRules") {

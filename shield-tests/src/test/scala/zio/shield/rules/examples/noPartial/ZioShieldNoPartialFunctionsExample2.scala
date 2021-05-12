@@ -1,18 +1,17 @@
 package zio.shield.rules.examples.noPartial
 
-import zio.shield.annotation._
+import zio.shield.Annotation._
 
 object ZioShieldNoPartialFunctionsExample2 {
   @partial
   def annotatedPartial(foo: String): String = throw new RuntimeException()
 
-  def defBodyPartial(foo: String): String = {
+  def defBodyPartial(foo: String): String =
     if (foo.length > 1) {
       foo
     } else {
       throw new RuntimeException()
     }
-  }
 
   def defBodyTotal(foo: String): String = foo
 
@@ -21,11 +20,10 @@ object ZioShieldNoPartialFunctionsExample2 {
 
   val valBodyPartial: String = throw new RuntimeException()
 
-  def usingPartial(foo: String): String = {
+  def usingPartial(foo: String): String =
     if (foo.length > 1) {
       foo
     } else {
       defBodyPartial(foo)
     }
-  }
 }

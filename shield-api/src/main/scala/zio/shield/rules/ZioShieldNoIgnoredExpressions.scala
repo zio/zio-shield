@@ -1,16 +1,13 @@
 package zio.shield.rules
 
 import scalafix.v1._
-
 import scala.meta._
 
-object ZioShieldNoIgnoredExpressions
-    extends SemanticRule("ZioShieldNoIgnoredExpressions") {
+object ZioShieldNoIgnoredExpressions extends SemanticRule("ZioShieldNoIgnoredExpressions") {
 
   override def fix(implicit doc: SemanticDocument): Patch = {
 
-    def findIgnoredExpressions(exprs: List[Stat],
-                               skipLast: Boolean = false): List[Stat] = {
+    def findIgnoredExpressions(exprs: List[Stat], skipLast: Boolean = false): List[Stat] = {
       val possiblyIgnored = if (skipLast) exprs.dropRight(1) else exprs
 
       possiblyIgnored.collect {

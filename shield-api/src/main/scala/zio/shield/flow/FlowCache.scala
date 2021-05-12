@@ -23,27 +23,25 @@ trait FlowCache {
 
   def searchTag(tag: Tag)(symbol: String): Option[Boolean]
 
-  def deepInferAndCache(inferrers: List[FlowInferrer[_]])(
-      files: List[Path]): Unit
+  def deepInferAndCache(inferrers: List[FlowInferrer[_]])(files: List[Path]): Unit
 
   def stats: FlowCache.Stats
 }
 
 // TODO maybe we don't need buffers here
 final case class FlowCacheImpl(
-    files: mutable.Map[String, Path],
-    docs: mutable.Map[Path, SemanticDocument],
-    trees: mutable.Map[String, Tree],
-    edges: mutable.Map[String, FlowEdge], // edges between symbols
-    userTags: mutable.Map[String, mutable.Buffer[TagProp[_]]] // tags provided by user via annotations
+  files: mutable.Map[String, Path],
+  docs: mutable.Map[Path, SemanticDocument],
+  trees: mutable.Map[String, Tree],
+  edges: mutable.Map[String, FlowEdge],                     // edges between symbols
+  userTags: mutable.Map[String, mutable.Buffer[TagProp[_]]] // tags provided by user via annotations
 ) extends FlowCache {
 
   val inferredTags: mutable.Map[String, mutable.Buffer[TagProp[_]]] =
     mutable.Map.empty
 
   def searchTag(tag: Tag)(symbol: String): Option[Boolean] = {
-    def findProp(tags: mutable.Map[String, mutable.Buffer[TagProp[_]]])
-      : Option[Boolean] =
+    def findProp(tags: mutable.Map[String, mutable.Buffer[TagProp[_]]]): Option[Boolean] =
       tags
         .getOrElse(symbol, mutable.Buffer.empty)
         .find(p => p.tag == tag && p.isProved)
@@ -64,16 +62,14 @@ final case class FlowCacheImpl(
     inferredTags.clear()
   }
 
-  def update(semDocs: Map[Path, SemanticDocument]): Unit = {
+  def update(semDocs: Map[Path, SemanticDocument]): Unit =
     semDocs.foreach {
       case (file, semDoc) =>
         docs(file) = semDoc
 
         implicit val doc: SemanticDocument = semDoc
 
-        def updateForSymbol(symbol: Symbol,
-                            tree: Tree,
-                            edge: FlowEdge): Unit = {
+        def updateForSymbol(symbol: Symbol, tree: Tree, edge: FlowEdge): Unit =
           if (symbol.isGlobal) {
             files(symbol.value) = file
             trees(symbol.value) = tree
@@ -89,7 +85,6 @@ final case class FlowCacheImpl(
               .toBuffer
             edges(symbol.value) = edge
           }
-        }
 
         val traverser = new Traverser {
           override def apply(tree: Tree): Unit = tree match {
@@ -131,14 +126,12 @@ final case class FlowCacheImpl(
 
         traverser(semDoc.tree)
     }
-  }
 
-  def deepInferAndCache(inferrers: List[FlowInferrer[_]])(
-      targetFiles: List[Path]): Unit =
+  def deepInferAndCache(inferrers: List[FlowInferrer[_]])(targetFiles: List[Path]): Unit =
     if (inferrers.nonEmpty) {
       val processingSymbols = mutable.HashSet[String]()
 
-      def dfs(symbol: String): Unit = {
+      def dfs(symbol: String): Unit =
         if (!processingSymbols.contains(symbol)) {
           processingSymbols += symbol
           var inferredTagsBuffer: mutable.Buffer[TagProp[_]] = null
@@ -165,7 +158,6 @@ final case class FlowCacheImpl(
               }
           }
         }
-      }
 
       val targetFilesSet = targetFiles.toSet
 
@@ -182,39 +174,25 @@ final case class FlowCacheImpl(
       edges.values.map {
         case FunctionEdge(argsTypes, returnType, innerSymbols) =>
           argsTypes.size + returnType.size + innerSymbols.size
-        case ClassTraitEdge(ctorArgsTypes,
-                            parentsTypes,
-                            innerDefns,
-                            innerSymbols) =>
+        case ClassTraitEdge(ctorArgsTypes, parentsTypes, innerDefns, innerSymbols) =>
           ctorArgsTypes.size + parentsTypes.size + innerDefns.size + innerSymbols.size
         case ObjectEdge(innerDefns, innerSymbols) =>
           innerDefns.size + innerSymbols.size
         case ValVarEdge(innerSymbols) => innerSymbols.size
       }.sum,
-      edges.values
-        .flatMap {
-          case FunctionEdge(_, _, innerSymbols) =>
-            innerSymbols.filterNot(edges.contains)
-          case ValVarEdge(innerSymbols) =>
-            innerSymbols.filterNot(edges.contains)
-          case _ => List.empty
-        }
-        .toList
-        .distinct
-        .sorted
+      edges.values.flatMap {
+        case FunctionEdge(_, _, innerSymbols) =>
+          innerSymbols.filterNot(edges.contains)
+        case ValVarEdge(innerSymbols) =>
+          innerSymbols.filterNot(edges.contains)
+        case _ => List.empty
+      }.toList.distinct.sorted
     )
 }
 
 object FlowCache {
   def empty: FlowCache =
-    FlowCacheImpl(mutable.Map.empty,
-                  mutable.Map.empty,
-                  mutable.Map.empty,
-                  mutable.Map.empty,
-                  mutable.Map.empty)
+    FlowCacheImpl(mutable.Map.empty, mutable.Map.empty, mutable.Map.empty, mutable.Map.empty, mutable.Map.empty)
 
-  final case class Stats(filesCount: Int,
-                         symbolsCount: Int,
-                         edgesCount: Int,
-                         leafSymbols: List[String])
+  final case class Stats(filesCount: Int, symbolsCount: Int, edgesCount: Int, leafSymbols: List[String])
 }

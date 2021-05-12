@@ -3,13 +3,13 @@ ZioShieldNoFutureMethodsExample.scala:7:7: error: Future returning method
       ^^^^
 ---
 ZioShieldNoFutureMethodsExample.scala:8:7: error: Future returning method
-  val bam: Future[Unit] = Future { println("bam!") }
+  val bam: Future[Unit]  = Future { println("bam!") }
       ^^^
 ---
 ZioShieldNoFutureMethodsExample.scala:9:7: error: Future returning method
-  def whaam = Future { println("whaam!") }
+  def whaam              = Future { println("whaam!") }
       ^^^^^
 ---
 ZioShieldNoFutureMethodsExample.scala:10:7: error: Future returning method
-  val splash = Future { println("splash!") }
+  val splash             = Future { println("splash!") }
       ^^^^^^

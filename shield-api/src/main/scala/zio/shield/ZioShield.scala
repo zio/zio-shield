@@ -5,54 +5,49 @@ import java.nio.file.Path
 import scalafix.internal.v1.Rules
 import scalafix.lint.RuleDiagnostic
 import scalafix.v1._
-import zio.shield.config.{Config, InvalidConfig}
+import zio.shield.config.{ Config, InvalidConfig }
 import zio.shield.flow._
 import zio.shield.rules._
 
 import scala.collection.mutable
 
 trait SemanticDocumentLoader {
-  def load(synDoc: SyntacticDocument,
-           path: Path): Either[Throwable, SemanticDocument]
+  def load(synDoc: SyntacticDocument, path: Path): Either[Throwable, SemanticDocument]
 }
 
 class ZioShield private (val loader: SemanticDocumentLoader) {
 
   def withExcluded(
-      excludedRules: List[String] = List.empty,
-      excludedInferrers: List[String] = List.empty): ConfiguredZioShield = {
+    excludedRules: List[String] = List.empty,
+    excludedInferrers: List[String] = List.empty
+  ): ConfiguredZioShield = {
 
-    val filteredSemanticRules = ZioShield.allSemanticRules.filterNot(r =>
-      excludedRules.contains(r.name.value))
-    val filteredFlowRules = ZioShield.allFlowRules.filterNot(
-      r =>
-        excludedInferrers.exists(ei => r.dependsOn.exists(_.name == ei)) ||
-          excludedRules.contains(r.name))
+    val filteredSemanticRules = ZioShield.allSemanticRules.filterNot(r => excludedRules.contains(r.name.value))
+    val filteredFlowRules = ZioShield.allFlowRules.filterNot(r =>
+      excludedInferrers.exists(ei => r.dependsOn.exists(_.name == ei)) ||
+        excludedRules.contains(r.name)
+    )
 
-    ConfiguredZioShield(loader)(List.empty,
-                                filteredSemanticRules,
-                                filteredFlowRules)
+    ConfiguredZioShield(loader)(List.empty, filteredSemanticRules, filteredFlowRules)
   }
 
   def withAllRules(): ConfiguredZioShield =
-    ConfiguredZioShield(loader)(List.empty,
-                                ZioShield.allSemanticRules,
-                                ZioShield.allFlowRules)
+    ConfiguredZioShield(loader)(List.empty, ZioShield.allSemanticRules, ZioShield.allFlowRules)
 
   def withConfig(config: Config): ConfiguredZioShield =
     withExcluded(config.excludedRules, config.excludedInferrers)
 }
 
 final case class ConfiguredZioShield(loader: SemanticDocumentLoader)(
-    syntacticRules: List[Rule],
-    semanticRules: List[Rule],
-    flowRules: List[FlowRule]) {
+  syntacticRules: List[Rule],
+  semanticRules: List[Rule],
+  flowRules: List[FlowRule]
+) {
 
   private val flowCache: FlowCache = FlowCache.empty
 
   private val combinedSyntacticRules = Rules(syntacticRules)
-  private val combinedSemanticRules = Rules(
-    semanticRules ++ flowRules.map(_.toRule(flowCache)))
+  private val combinedSemanticRules  = Rules(semanticRules ++ flowRules.map(_.toRule(flowCache)))
 
   private val synDocs: mutable.Map[Path, SyntacticDocument] =
     mutable.HashMap.empty
@@ -62,8 +57,7 @@ final case class ConfiguredZioShield(loader: SemanticDocumentLoader)(
   lazy val inferrers: List[FlowInferrer[_]] =
     flowRules.flatMap(_.dependsOn).distinct
 
-  def updateCache(files: List[Path])(
-      onDiagnostic: ZioShieldDiagnostic => Unit): Unit = {
+  def updateCache(files: List[Path])(onDiagnostic: ZioShieldDiagnostic => Unit): Unit = {
     val inputs = files.map(meta.Input.File(_))
 
     inputs.foreach { i =>
@@ -71,11 +65,11 @@ final case class ConfiguredZioShield(loader: SemanticDocumentLoader)(
     }
 
     inputs.foreach { i =>
-      val path = i.path.toNIO
+      val path   = i.path.toNIO
       val synDoc = synDocs(path)
       loader.load(
         synDoc,
-        i.path.toNIO,
+        i.path.toNIO
       ) match {
         case Left(err) =>
           onDiagnostic(ZioShieldDiagnostic.SemanticFailure(path, err))
@@ -89,17 +83,14 @@ final case class ConfiguredZioShield(loader: SemanticDocumentLoader)(
 
   def cacheStats: FlowCache.Stats = flowCache.stats
 
-  def run(files: List[Path])(
-      onDiagnostic: ZioShieldDiagnostic => Unit): Unit = {
+  def run(files: List[Path])(onDiagnostic: ZioShieldDiagnostic => Unit): Unit = {
 
     val inputs = files.map(meta.Input.File(_))
 
     def lint(path: Path, msg: RuleDiagnostic): ZioShieldDiagnostic =
       ZioShieldDiagnostic.Lint(path, msg.position, msg.message)
 
-    def patch(oldDoc: String,
-              newDoc: String,
-              path: Path): Option[ZioShieldDiagnostic] =
+    def patch(oldDoc: String, newDoc: String, path: Path): Option[ZioShieldDiagnostic] =
       if (oldDoc != newDoc) {
         Some(ZioShieldDiagnostic.Patch(path, oldDoc, newDoc))
       } else {
@@ -134,10 +125,8 @@ object ZioShield {
 
   def apply(loader: SemanticDocumentLoader): ZioShield = new ZioShield(loader)
 
-  val allSemanticRules = List(ZioShieldNoFutureMethods,
-                              ZioShieldNoIgnoredExpressions,
-                              ZioShieldNoReflection,
-                              ZioShieldNoTypeCasting)
+  val allSemanticRules =
+    List(ZioShieldNoFutureMethods, ZioShieldNoIgnoredExpressions, ZioShieldNoReflection, ZioShieldNoTypeCasting)
 
   val allFlowRules: List[FlowRule] =
     List(
@@ -147,18 +136,20 @@ object ZioShield {
       ZioShieldNoPartial
     )
 
-  val allInferrers: List[FlowInferrer[_]] = List(EffectfullInferrer,
-                                                 ImplementationInferrer,
-                                                 ImpurityInferrer,
-                                                 NullabilityInferrer,
-                                                 PartialityInferrer,
-                                                 PureInterfaceInferrer)
+  val allInferrers: List[FlowInferrer[_]] = List(
+    EffectfullInferrer,
+    ImplementationInferrer,
+    ImpurityInferrer,
+    NullabilityInferrer,
+    PartialityInferrer,
+    PureInterfaceInferrer
+  )
 
   def validateConfig(config: Config): Option[Throwable] = {
-    val invalidRules = config.excludedRules.filterNot(
-      r =>
-        allSemanticRules.exists(_.name.value == r) ||
-          allFlowRules.exists(_.name == r))
+    val invalidRules = config.excludedRules.filterNot(r =>
+      allSemanticRules.exists(_.name.value == r) ||
+        allFlowRules.exists(_.name == r)
+    )
 
     val invalidInferrers =
       config.excludedInferrers.filterNot(i => allInferrers.exists(_.name == i))
@@ -170,7 +161,7 @@ object ZioShield {
         else None,
         if (invalidInferrers.nonEmpty)
           Some(s"invalid inferrers: ${invalidInferrers.mkString(", ")}")
-        else None,
+        else None
       ).flatten.mkString(", ")
       Some(new InvalidConfig(msg))
     } else {

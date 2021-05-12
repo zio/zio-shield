@@ -3,7 +3,7 @@ package zio.shield.flow
 import scalafix.v1._
 import zio.shield.rules.ZioBlockDetector
 import zio.shield.tag.TagProof.ContraryProof
-import zio.shield.tag.{Tag, TagProof, TagProp}
+import zio.shield.tag.{ Tag, TagProof, TagProp }
 
 import scala.meta._
 
@@ -14,26 +14,23 @@ case object PureInterfaceInferrer extends FlowInferrer[Tag.PureInterface.type] {
   val ignoreParents =
     List("scala/AnyRef#", "scala/AnyVal#", "scala/Serializable#")
 
-  def infer(flowCache: FlowCache)(
-      symbol: String): TagProp[Tag.PureInterface.type] = {
+  def infer(flowCache: FlowCache)(symbol: String): TagProp[Tag.PureInterface.type] = {
     val maybeEdge = flowCache.edges.get(symbol)
 
     val effectfulParents = maybeEdge match {
       case Some(ClassTraitEdge(_, parentsTypes, _, _)) =>
-        parentsTypes.filterNot(
-          t =>
-            flowCache
-              .searchTag(Tag.PureInterface)(t)
-              .getOrElse(true) || ignoreParents.contains(t))
+        parentsTypes.filterNot(t =>
+          flowCache
+            .searchTag(Tag.PureInterface)(t)
+            .getOrElse(true) || ignoreParents.contains(t)
+        )
       case _ => List.empty
     }
 
     val traitProof = flowCache.trees.get(symbol) match {
-      case Some(t: Defn.Trait) => None
+      case Some(_: Defn.Trait) => None
       case Some(t) =>
-        Some(
-          TagProof.PatchProof(Patch.lint(
-            Diagnostic("", "not a pure interface: not a trait", t.pos))))
+        Some(TagProof.PatchProof(Patch.lint(Diagnostic("", "not a pure interface: not a trait", t.pos))))
       case None =>
         Some(ContraryProof)
     }
@@ -42,15 +39,14 @@ case object PureInterfaceInferrer extends FlowInferrer[Tag.PureInterface.type] {
       case Some(ClassTraitEdge(_, _, innerDefns, _)) =>
         innerDefns.flatMap { d =>
           flowCache.edges.get(d) match {
-            case Some(edge: FunctionEdge) =>
+            case Some(_: FunctionEdge) =>
               for {
                 path <- flowCache.files.get(d)
-                doc <- flowCache.docs.get(path)
+                doc  <- flowCache.docs.get(path)
                 tree <- flowCache.trees.get(d)
                 patch = tree.collect {
                   case t if ZioBlockDetector.safeBlockDetector(t)(doc) =>
-                    Patch.lint(
-                      Diagnostic("", "effectful: ZIO effects usage", t.pos))
+                    Patch.lint(Diagnostic("", "effectful: ZIO effects usage", t.pos))
                 }.asPatch
               } yield patch
             case _ => None

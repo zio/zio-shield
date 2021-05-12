@@ -5,31 +5,28 @@ import zio.shield.rules.ZioBlockDetector
 import zio.shield.tag._
 import zio.shield.utils.SymbolInformationOps
 
-import scala.io.{Source => ScalaSource}
+import scala.io.{ Source => ScalaSource }
 import scala.meta._
 
 case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
 
   val constImpureMatcher: SymbolMatcher = SymbolMatcher.normalized(
     ScalaSource
-      .fromInputStream(
-        getClass.getClassLoader.getResourceAsStream("impure_methods.txt"))
+      .fromInputStream(getClass.getClassLoader.getResourceAsStream("impure_methods.txt"))
       .getLines()
-      .toList: _*)
+      .toList: _*
+  )
 
-  def constImpurityChecker(
-      implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
+  def constImpurityChecker(implicit doc: SemanticDocument): PartialFunction[Tree, Patch] = {
 
-    def isUnitMethod(s: Symbol): Boolean = {
+    def isUnitMethod(s: Symbol): Boolean =
       s.info
         .flatMap(_.safeSignature)
         .collect {
-          case MethodSignature(_, _, TypeRef(_, s: Symbol, List()))
-              if s.value == "scala/Unit#" =>
+          case MethodSignature(_, _, TypeRef(_, s: Symbol, List())) if s.value == "scala/Unit#" =>
             true
         }
         .getOrElse(false)
-    }
 
     ZioBlockDetector.lintFunction(isUnitMethod) {
       case _ => "impure: calling unit method"
@@ -38,7 +35,7 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
 
   val name: String = toString
 
-  def infer(flowCache: FlowCache)(symbol: String): TagProp[Tag.Impure.type] = {
+  def infer(flowCache: FlowCache)(symbol: String): TagProp[Tag.Impure.type] =
     if (ImpurityInferrer.constImpureMatcher.matches(Symbol(symbol))) {
       TagProp(Tag.Impure, cond = true, List(TagProof.GivenProof))
     } else {
@@ -59,11 +56,9 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
 
       val impureSymbols = flowCache.edges.get(symbol) match {
         case Some(FunctionEdge(_, _, innerSymbols)) =>
-          innerSymbols.filter(
-            flowCache.searchTag(Tag.Impure)(_).getOrElse(false))
+          innerSymbols.filter(flowCache.searchTag(Tag.Impure)(_).getOrElse(false))
         case Some(ValVarEdge(innerSymbols)) =>
-          innerSymbols.filter(
-            flowCache.searchTag(Tag.Impure)(_).getOrElse(false))
+          innerSymbols.filter(flowCache.searchTag(Tag.Impure)(_).getOrElse(false))
         case _ => List.empty
       }
 
@@ -75,7 +70,6 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
       if (proofs.nonEmpty) TagProp(Tag.Impure, cond = true, proofs)
       else TagProp(Tag.Impure, cond = false, List(TagProof.ContraryProof))
     }
-  }
 
   def dependentSymbols(edge: FlowEdge): List[String] = edge match {
     case FunctionEdge(_, _, innerSymbols)      => innerSymbols
@@ -85,11 +79,10 @@ case object ImpurityInferrer extends FlowInferrer[Tag.Impure.type] {
     case _                                     => List.empty
   }
 
-  def isInferable(symbol: String, edge: FlowEdge): Boolean = {
+  def isInferable(symbol: String, edge: FlowEdge): Boolean =
     edge match {
       case FunctionEdge(_, _, _) => true
       case ValVarEdge(_)         => true
       case _                     => false
     }
-  }
 }

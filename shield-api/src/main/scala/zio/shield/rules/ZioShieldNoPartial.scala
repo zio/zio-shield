@@ -1,7 +1,7 @@
 package zio.shield.rules
 
 import scalafix.v1._
-import zio.shield.flow.{FlowCache, FlowInferrer, PartialityInferrer}
+import zio.shield.flow.{ FlowCache, PartialityInferrer }
 import zio.shield.tag.Tag
 
 import scala.meta._
@@ -14,8 +14,7 @@ object ZioShieldNoPartial extends FlowRule {
   def fix(cache: FlowCache)(implicit doc: SemanticDocument): Patch = {
 
     val pf: PartialFunction[Tree, Patch] =
-      ZioBlockDetector.lintFunction(s =>
-        cache.searchTag(Tag.Partial)(s.value).getOrElse(false)) {
+      ZioBlockDetector.lintFunction(s => cache.searchTag(Tag.Partial)(s.value).getOrElse(false)) {
         case _ => "possible partial symbol" // TODO print proof
       } orElse {
         case l: Term.Throw =>

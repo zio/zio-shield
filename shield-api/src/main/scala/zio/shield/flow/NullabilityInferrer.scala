@@ -3,22 +3,21 @@ package zio.shield.flow
 import scalafix.v1._
 import zio.shield.tag._
 
-import scala.io.{Source => ScalaSource}
+import scala.io.{ Source => ScalaSource }
 import scala.meta._
 
 case object NullabilityInferrer extends FlowInferrer[Tag.Nullable.type] {
 
   val constNullableMatcher: SymbolMatcher = SymbolMatcher.normalized(
     ScalaSource
-      .fromInputStream(
-        getClass.getClassLoader.getResourceAsStream("nullable_methods.txt"))
+      .fromInputStream(getClass.getClassLoader.getResourceAsStream("nullable_methods.txt"))
       .getLines()
-      .toList: _*)
+      .toList: _*
+  )
 
   val name: String = toString
 
-  def infer(flowCache: FlowCache)(
-      symbol: String): TagProp[Tag.Nullable.type] = {
+  def infer(flowCache: FlowCache)(symbol: String): TagProp[Tag.Nullable.type] =
     if (NullabilityInferrer.constNullableMatcher.matches(Symbol(symbol))) {
       TagProp(Tag.Nullable, cond = true, List(TagProof.GivenProof))
     } else {
@@ -33,11 +32,9 @@ case object NullabilityInferrer extends FlowInferrer[Tag.Nullable.type] {
 
       val nullableSymbols = flowCache.edges.get(symbol) match {
         case Some(FunctionEdge(_, _, innerSymbols)) =>
-          innerSymbols.filter(
-            flowCache.searchTag(Tag.Nullable)(_).getOrElse(false))
+          innerSymbols.filter(flowCache.searchTag(Tag.Nullable)(_).getOrElse(false))
         case Some(ValVarEdge(innerSymbols)) =>
-          innerSymbols.filter(
-            flowCache.searchTag(Tag.Nullable)(_).getOrElse(false))
+          innerSymbols.filter(flowCache.searchTag(Tag.Nullable)(_).getOrElse(false))
         case _ => List.empty
       }
 
@@ -49,7 +46,6 @@ case object NullabilityInferrer extends FlowInferrer[Tag.Nullable.type] {
       if (proofs.nonEmpty) TagProp(Tag.Nullable, cond = true, proofs)
       else TagProp(Tag.Nullable, cond = false, List(TagProof.ContraryProof))
     }
-  }
 
   def dependentSymbols(edge: FlowEdge): List[String] = edge match {
     case FunctionEdge(_, _, innerSymbols)      => innerSymbols
@@ -59,11 +55,10 @@ case object NullabilityInferrer extends FlowInferrer[Tag.Nullable.type] {
     case _                                     => List.empty
   }
 
-  def isInferable(symbol: String, edge: FlowEdge): Boolean = {
+  def isInferable(symbol: String, edge: FlowEdge): Boolean =
     edge match {
       case FunctionEdge(_, _, _) => true
       case ValVarEdge(_)         => true
       case _                     => false
     }
-  }
 }

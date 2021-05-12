@@ -7,8 +7,7 @@ import scala.meta._
 
 import zio.shield.utils.SymbolInformationOps
 
-object ZioShieldNoFutureMethods
-    extends SemanticRule("ZioShieldNoFutureMethods") {
+object ZioShieldNoFutureMethods extends SemanticRule("ZioShieldNoFutureMethods") {
 
   override def fix(implicit doc: SemanticDocument): Patch = {
 
@@ -26,14 +25,10 @@ object ZioShieldNoFutureMethods
       val lints = mutable.Buffer[Patch]()
 
       override def apply(tree: Tree): Unit = tree match {
-        case Defn.Val(_, List(Pat.Var(name)), _, _)
-            if getType(name.symbol).exists(detectFutureType) =>
-          lints += Patch.lint(
-            Diagnostic("", "Future returning method", name.pos))
-        case Defn.Def(_, name, _, _, _, _)
-            if getType(name.symbol).exists(detectFutureType) =>
-          lints += Patch.lint(
-            Diagnostic("", "Future returning method", name.pos))
+        case Defn.Val(_, List(Pat.Var(name)), _, _) if getType(name.symbol).exists(detectFutureType) =>
+          lints += Patch.lint(Diagnostic("", "Future returning method", name.pos))
+        case Defn.Def(_, name, _, _, _, _) if getType(name.symbol).exists(detectFutureType) =>
+          lints += Patch.lint(Diagnostic("", "Future returning method", name.pos))
         case _ => super.apply(tree)
       }
     }

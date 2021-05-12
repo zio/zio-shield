@@ -22,6 +22,10 @@ ZioShieldNoPartialFunctionsExample.scala:14:39: error: possible partial symbol
   ZioShieldNoPartialFunctionsExample2.defBodyPartial("foo")
                                       ^^^^^^^^^^^^^^
 ---
+ZioShieldNoPartialFunctionsExample.scala:16:39: error: possible partial symbol
+  ZioShieldNoPartialFunctionsExample2.annotatedTotal("foo")
+                                      ^^^^^^^^^^^^^^
+---
 ZioShieldNoPartialFunctionsExample.scala:17:39: error: possible partial symbol
   ZioShieldNoPartialFunctionsExample2.valBodyPartial
                                       ^^^^^^^^^^^^^^
@@ -39,29 +43,33 @@ ZioShieldNoPartialFunctionsExample2.scala:7:47: error: not total: throwing excep
                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ---
 ZioShieldNoPartialFunctionsExample2.scala:9:7: error: possible partial symbol
-  def defBodyPartial(foo: String): String = {
+  def defBodyPartial(foo: String): String =
       ^^^^^^^^^^^^^^
 ---
 ZioShieldNoPartialFunctionsExample2.scala:13:7: error: not total: throwing exceptions
       throw new RuntimeException()
       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ---
-ZioShieldNoPartialFunctionsExample2.scala:20:45: error: not total: throwing exceptions
+ZioShieldNoPartialFunctionsExample2.scala:19:7: error: possible partial symbol
+  def annotatedTotal(foo: String): String = throw new RuntimeException()
+      ^^^^^^^^^^^^^^
+---
+ZioShieldNoPartialFunctionsExample2.scala:19:45: error: not total: throwing exceptions
   def annotatedTotal(foo: String): String = throw new RuntimeException()
                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ---
-ZioShieldNoPartialFunctionsExample2.scala:22:7: error: possible partial symbol
+ZioShieldNoPartialFunctionsExample2.scala:21:7: error: possible partial symbol
   val valBodyPartial: String = throw new RuntimeException()
       ^^^^^^^^^^^^^^
 ---
-ZioShieldNoPartialFunctionsExample2.scala:22:32: error: not total: throwing exceptions
+ZioShieldNoPartialFunctionsExample2.scala:21:32: error: not total: throwing exceptions
   val valBodyPartial: String = throw new RuntimeException()
                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ---
-ZioShieldNoPartialFunctionsExample2.scala:24:7: error: possible partial symbol
-  def usingPartial(foo: String): String = {
+ZioShieldNoPartialFunctionsExample2.scala:23:7: error: possible partial symbol
+  def usingPartial(foo: String): String =
       ^^^^^^^^^^^^
 ---
-ZioShieldNoPartialFunctionsExample2.scala:28:7: error: possible partial symbol
+ZioShieldNoPartialFunctionsExample2.scala:27:7: error: possible partial symbol
       defBodyPartial(foo)
       ^^^^^^^^^^^^^^

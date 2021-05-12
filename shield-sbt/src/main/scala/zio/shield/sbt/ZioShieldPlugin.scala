@@ -4,14 +4,14 @@ import java.io.FileNotFoundException
 
 import sbt.Keys._
 import sbt.plugins.JvmPlugin
-import sbt.{Def, _}
-import zio.shield.config.{Config => ZioShieldConfig}
+import sbt.{ Def, _ }
+import zio.shield.config.{ Config => ZioShieldConfig }
 import zio.shield.semdocs.DirectSemanticDocumentLoader
-import zio.shield.{ZioShield, ZioShieldDiagnostic}
+import zio.shield.{ ZioShield, ZioShieldDiagnostic }
 
 object ZioShieldPlugin extends AutoPlugin {
   override def trigger: PluginTrigger = allRequirements
-  override def requires: Plugins = JvmPlugin
+  override def requires: Plugins      = JvmPlugin
 
   object autoImport {
     val shield: TaskKey[Unit] =
@@ -47,12 +47,11 @@ object ZioShieldPlugin extends AutoPlugin {
     shieldConfig := None
   )
 
-  override def projectSettings: Seq[Def.Setting[_]] = {
+  override def projectSettings: Seq[Def.Setting[_]] =
     Seq(
       libraryDependencies ++= {
         if (!libraryDependencies.value.exists(_.name == "semanticdb-scalac"))
-          Seq(compilerPlugin(
-            "org.scalameta" % "semanticdb-scalac" % "4.2.3" cross CrossVersion.full))
+          Seq(compilerPlugin("org.scalameta" % "semanticdb-scalac" % "4.2.3" cross CrossVersion.full))
         else
           Seq.empty
       },
@@ -67,10 +66,9 @@ object ZioShieldPlugin extends AutoPlugin {
       }
     ) ++
       Seq(Compile, Test).flatMap(c => inConfig(c)(shieldConfigSettings(c)))
-  }
 
   private def shieldTask(
-      config: Configuration
+    config: Configuration
   ): Def.Initialize[Task[Unit]] =
     Def.task {
       val log = streams.value.log
@@ -84,8 +82,7 @@ object ZioShieldPlugin extends AutoPlugin {
 
       val configE = ZioShieldConfig.fromFile(path)
       val zioShieldConfig = configE match {
-        case Left(_: FileNotFoundException)
-            if (shieldConfig.in(config).value.isEmpty) =>
+        case Left(_: FileNotFoundException) if (shieldConfig.in(config).value.isEmpty) =>
           ZioShieldConfig.empty
         case Left(err) =>
           log.error(s"Error while loading config: $err")
@@ -100,8 +97,7 @@ object ZioShieldPlugin extends AutoPlugin {
       }
 
       val zioShield = ZioShield(
-        DirectSemanticDocumentLoader(
-          fullClasspath.value.map(_.data.toPath).toList)
+        DirectSemanticDocumentLoader(fullClasspath.value.map(_.data.toPath).toList)
       ).withConfig(zioShieldConfig)
 
       val files = unmanagedSources.value.map(_.toPath).toList
@@ -116,7 +112,7 @@ object ZioShieldPlugin extends AutoPlugin {
           log.error(d.consoleMessage)
         } else {
           log.warn(d.consoleMessage)
-      }
+        }
 
       zioShield.updateCache(files)(onDiagnostic)
 
@@ -124,13 +120,12 @@ object ZioShieldPlugin extends AutoPlugin {
 
       if (shieldDebugOutput.value) {
         log.info(f"""||ZIO Shield Statistics|
-              ||---------------------|
-              ||Files: ${stats.filesCount}%14s|
-              ||Symbols: ${stats.symbolsCount}%12s|
-              ||Edges: ${stats.edgesCount}%14s|""".stripMargin)
+                     ||---------------------|
+                     ||Files: ${stats.filesCount}%14s|
+                     ||Symbols: ${stats.symbolsCount}%12s|
+                     ||Edges: ${stats.edgesCount}%14s|""".stripMargin)
 
-        log.info(
-          s"Leaf symbols:\n${stats.leafSymbols.mkString("  ", "\n  ", "\n")}")
+        log.info(s"Leaf symbols:\n${stats.leafSymbols.mkString("  ", "\n  ", "\n")}")
       }
 
       log.info("Running ZIO Shield...")
